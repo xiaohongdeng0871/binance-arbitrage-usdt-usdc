@@ -32,7 +32,7 @@ hmac = "0.12"
 sha2 = "0.10"
 
 # 数据库依赖
-sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "mysql", "chrono", "decimal"] }
+sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "mysql", "chrono"] }
 mysql = "24.0"
 mysql_common = "0.30"
 

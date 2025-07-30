@@ -25,7 +25,7 @@ use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::str::FromStr;
 use std::fs;
-use chrono::{DateTime, Utc, Local, NaiveDate};
+use chrono::{DateTime, Utc, Local, NaiveDate, TimeZone};
 
 /// 币安 USDT-USDC 套利程序
 #[derive(Parser, Debug)]
@@ -459,8 +459,8 @@ async fn simulate_price_movements(api: &MockBinanceApi, base_asset: &str, volati
         usdc_price = usdc_price.max(1.0);
         
         // 更新API中的价格
-        api.update_price(&usdt_symbol, Decimal::from_f64(usdt_price).unwrap_or(dec!(50000)));
-        api.update_price(&usdc_symbol, Decimal::from_f64(usdc_price).unwrap_or(dec!(50025)));
+        api.update_price(&usdt_symbol, Decimal::from(usdt_price));
+        api.update_price(&usdc_symbol, Decimal::from(usdc_price));
         
         debug!("更新模拟价格 - {}: {:.2}, {}: {:.2}", 
             usdt_symbol, usdt_price, 
