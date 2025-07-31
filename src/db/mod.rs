@@ -1,12 +1,12 @@
 //! 数据库模块，负责与MySQL交互并提供套利历史和绩效数据的存储与检索
 
-use anyhow::{Context, Result, anyhow};
-use sqlx::{MySql, MySqlPool, Pool};
+use anyhow::{Context, Result};
+use sqlx::{MySqlPool};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use crate::models::{ArbitrageResult, ArbitrageStatus};
-use chrono::{DateTime, Utc, NaiveDateTime, Duration, TimeZone};
-use log::{info, warn, error, debug};
+use chrono::{DateTime, Utc, NaiveDateTime, TimeZone};
+use log::{info, debug};
 use rust_decimal::Decimal;
 use serde::{Serialize, Deserialize};
 

@@ -1,6 +1,6 @@
 use super::TradingStrategy;
 use crate::binance::ExchangeApi;
-use crate::models::{ArbitrageOpportunity, Price, QuoteCurrency, OrderBook};
+use crate::models::{ArbitrageOpportunity, Price, QuoteCurrency};
 use crate::config::Config;
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;

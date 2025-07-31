@@ -4,7 +4,6 @@ use std::env;
 use std::fs::File;
 use std::io::Read;
 use anyhow::{Context, Result};
-use rust_decimal::Decimal;
 
 /// 交易策略类型
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

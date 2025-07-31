@@ -2,9 +2,8 @@ use super::RiskController;
 use crate::models::{ArbitrageOpportunity, ArbitrageResult};
 use anyhow::Result;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc, Local, NaiveTime, Timelike};
-use log::{debug, info, warn};
-use std::sync::Arc;
+use chrono::{Local, NaiveTime};
+use log::{debug};
 
 /// 交易时间窗口控制器
 /// 限制只在特定时间段内进行交易，可用于避免低流动性时段或配合交易策略

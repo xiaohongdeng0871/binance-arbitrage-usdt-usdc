@@ -5,7 +5,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use rust_decimal::Decimal;
 use std::sync::Arc;
-use log::{debug, info, warn};
+use log::{debug, info};
 use rust_decimal_macros::dec;
 use std::sync::Mutex;
 use std::collections::VecDeque;

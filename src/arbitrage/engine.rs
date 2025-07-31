@@ -1,16 +1,15 @@
 use crate::binance::ExchangeApi;
 use crate::config::{Config, StrategyType, RiskControllerType};
-use crate::models::{ArbitrageOpportunity, ArbitrageResult, ArbitrageStatus, OrderStatus, Price, QuoteCurrency, Side};
+use crate::models::{ArbitrageOpportunity, ArbitrageResult, ArbitrageStatus, OrderStatus, QuoteCurrency, Side};
 use crate::strategies::{TradingStrategy, SimpleArbitrageStrategy, TimeWeightedAverageStrategy, OrderBookDepthStrategy, SlippageControlStrategy, TrendFollowingStrategy};
 use crate::risk::{RiskManager, RiskController, DailyLossLimitController, AbnormalPriceController, ExposureController, TradingTimeWindowController, TradingFrequencyController, PairBlacklistController};
 use crate::db::DatabaseManager;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use log::{debug, info, warn, error};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
-use std::collections::HashMap;
 
 /// 套利引擎，使用多种交易策略和风控机制进行USDT和USDC之间的套利
 pub struct ArbitrageEngine<T: ExchangeApi + Send + Sync + 'static> {

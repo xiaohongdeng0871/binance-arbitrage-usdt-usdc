@@ -1,16 +1,14 @@
 use crate::config::Config;
-use crate::models::{OrderBook, Price, QuoteCurrency, Side, Symbol, OrderInfo, OrderStatus};
+use crate::models::{OrderBook, Price, Side, Symbol, OrderInfo, OrderStatus};
 use anyhow::{Context, Result, anyhow};
 use async_trait::async_trait;
-use chrono::{Utc, DateTime};
+use chrono::{Utc};
 use hmac::{Hmac, Mac};
-use reqwest::{Client, RequestBuilder, Url};
+use reqwest::{Client, RequestBuilder};
 use rust_decimal::Decimal;
-use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
-use log::{debug, info, warn, error};
 
 type HmacSha256 = Hmac<Sha256>;
 

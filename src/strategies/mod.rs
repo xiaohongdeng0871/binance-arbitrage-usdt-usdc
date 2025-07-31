@@ -1,9 +1,7 @@
-use crate::models::{Price, OrderBook, ArbitrageOpportunity, QuoteCurrency};
-use crate::config::Config;
+use crate::models::{Price, ArbitrageOpportunity};
 use async_trait::async_trait;
 use anyhow::Result;
-use rust_decimal::Decimal;
-use std::sync::Arc;
+
 
 /// 交易策略接口
 #[async_trait]
