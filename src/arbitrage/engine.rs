@@ -55,7 +55,7 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
                         config.clone(),
                         api_arc.clone(),
                         settings.depth_levels,
-                        Decimal::from_f64(settings.min_liquidity).unwrap_or(dec!(1.0)),
+                        Decimal::from(settings.min_liquidity),
                     )));
                 },
                 StrategyType::SlippageControl => {
@@ -63,7 +63,7 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
                     let settings = &config.strategy_settings.slippage_control;
                     strategies.push(Box::new(SlippageControlStrategy::new(
                         config.clone(),
-                        Decimal::from_f64(settings.max_slippage_pct).unwrap_or(dec!(0.5)),
+                        Decimal::from(settings.max_slippage_pct),
                         settings.volatility_window_size,
                     )));
                 },
@@ -74,7 +74,7 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
                         config.clone(),
                         settings.short_window,
                         settings.long_window,
-                        Decimal::from_f64(settings.trend_threshold).unwrap_or(dec!(1.0)),
+                        Decimal::from(settings.trend_threshold),
                     )));
                 },
             }
@@ -95,7 +95,7 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
                 RiskControllerType::DailyLossLimit => {
                     info!("启用每日亏损限制风控");
                     risk_manager.add_controller(DailyLossLimitController::new(
-                        Decimal::from_f64(config.risk_settings.daily_loss_limit.max_daily_loss).unwrap_or(dec!(50.0))
+                        Decimal::from(config.risk_settings.daily_loss_limit.max_daily_loss)
                     ));
                 },
                 // ... 其他风控初始化代码 ...
@@ -105,7 +105,7 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
                     let settings = &config.risk_settings.abnormal_price;
                     risk_manager.add_controller(AbnormalPriceController::new(
                         settings.window_size,
-                        Decimal::from_f64(settings.abnormal_threshold).unwrap_or(dec!(5.0)),
+                        Decimal::from(settings.abnormal_threshold),
                         settings.cooldown_period,
                     ));
                 },
@@ -117,7 +117,7 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
                     for (asset, max_exposure) in &config.risk_settings.exposure.max_exposures {
                         exposure_controller.set_max_exposure(
                             asset, 
-                            Decimal::from_f64(*max_exposure).unwrap_or(Decimal::MAX)
+                            Decimal::from(*max_exposure)
                         );
                     }
                     
@@ -302,11 +302,11 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
                         Ok(true) => {
                             if opportunity.profit_percentage > best_profit {
                                 best_profit = opportunity.profit_percentage;
-                                best_opportunity = Some(opportunity);
                                 debug!(
                                     "发现更优套利机会 (策略: {}): 利润率 {}%, 价差: {}",
                                     strategy.name(), opportunity.profit_percentage, opportunity.price_diff
                                 );
+                                best_opportunity = Some(opportunity);
                             }
                         },
                         Ok(false) => {
