@@ -8,6 +8,7 @@ use std::sync::Arc;
 use log::{debug, info};
 use std::sync::Mutex;
 use chrono::{DateTime, Duration, Utc};
+use rust_decimal::prelude::FromPrimitive;
 
 /// 时间加权平均价格（TWAP）策略
 /// 将一个大的套利订单分解成多个小订单，在特定时间段内均匀执行
@@ -106,7 +107,7 @@ impl TradingStrategy for TimeWeightedAverageStrategy {
         );
         
         // 计算每个分片的交易金额
-        let total_amount = Decimal::from(self.config.arbitrage_settings.max_trade_amount_usdt);
+        let total_amount = Decimal::from_f64(self.config.arbitrage_settings.max_trade_amount_usdt).unwrap();
         let slice_amount = total_amount / Decimal::from(self.slices);
         
         // 比较TWAP价格，确定买入和卖出方向
@@ -149,10 +150,10 @@ impl TradingStrategy for TimeWeightedAverageStrategy {
     
     async fn validate_opportunity(&self, opportunity: &ArbitrageOpportunity) -> Result<bool> {
         // 验证利润是否超过最小阈值
-        let min_profit = Decimal::from(self.config.arbitrage_settings.min_profit_percentage);
+        let min_profit = Decimal::from_f64(self.config.arbitrage_settings.min_profit_percentage).unwrap();
         
         // TWAP策略可能需要较低的利润阈值，因为它降低了风险
-        let adjusted_min_profit = min_profit * Decimal::from(0.8); // 使用80%的阈值
+        let adjusted_min_profit = min_profit * Decimal::from_f64(0.8).unwrap(); // 使用80%的阈值
         
         let is_valid = opportunity.profit_percentage >= adjusted_min_profit;
         

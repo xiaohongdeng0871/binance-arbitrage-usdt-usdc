@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use rust_decimal::Decimal;
 use std::sync::Arc;
 use log::debug;
+use rust_decimal::prelude::FromPrimitive;
 
 /// 创建简单套利策略实现，这是目前系统中使用的基本策略
 /// 简单的价格差异套利策略
@@ -33,7 +34,7 @@ impl TradingStrategy for SimpleArbitrageStrategy {
     }
     
     async fn find_opportunity(&self, base_asset: &str, usdt_price: &Price, usdc_price: &Price) -> Result<Option<ArbitrageOpportunity>> {
-        let max_trade_amount = Decimal::from(self.config.arbitrage_settings.max_trade_amount_usdt);
+        let max_trade_amount = Decimal::from_f64(self.config.arbitrage_settings.max_trade_amount_usdt).unwrap();
         
         // 比较价格，确定买入和卖出方向
         let opportunity = if usdt_price.price < usdc_price.price {
@@ -73,7 +74,7 @@ impl TradingStrategy for SimpleArbitrageStrategy {
     
     async fn validate_opportunity(&self, opportunity: &ArbitrageOpportunity) -> Result<bool> {
         // 验证利润是否超过最小阈值
-        let min_profit = Decimal::from(self.config.arbitrage_settings.min_profit_percentage);
+        let min_profit = Decimal::from_f64(self.config.arbitrage_settings.min_profit_percentage).unwrap();
         let is_valid = opportunity.profit_percentage >= min_profit;
         
         debug!(

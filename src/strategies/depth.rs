@@ -7,6 +7,7 @@ use async_trait::async_trait;
 use rust_decimal::Decimal;
 use std::sync::Arc;
 use log::{debug, info, warn};
+use rust_decimal::prelude::FromPrimitive;
 use rust_decimal_macros::dec;
 
 /// 订单簿深度分析策略
@@ -111,7 +112,7 @@ impl<T: ExchangeApi + Send + Sync + 'static> TradingStrategy for OrderBookDepthS
     }
     
     async fn find_opportunity(&self, base_asset: &str, usdt_price: &Price, usdc_price: &Price) -> Result<Option<ArbitrageOpportunity>> {
-        let max_trade_amount = Decimal::from(self.config.arbitrage_settings.max_trade_amount_usdt);
+        let max_trade_amount = Decimal::from_f64(self.config.arbitrage_settings.max_trade_amount_usdt).unwrap();
         
         // 构造交易对名称
         let usdt_symbol = format!("{}{}", base_asset, "USDT");
@@ -192,8 +193,8 @@ impl<T: ExchangeApi + Send + Sync + 'static> TradingStrategy for OrderBookDepthS
     
     async fn validate_opportunity(&self, opportunity: &ArbitrageOpportunity) -> Result<bool> {
         // 验证利润是否超过最小阈值（考虑滑点影响，这里使用更高的阈值）
-        let min_profit = Decimal::from(self.config.arbitrage_settings.min_profit_percentage);
-        let adjusted_min_profit = min_profit * Decimal::from(1.5); // 使用150%的阈值，因为订单簿分析已经考虑了滑点
+        let min_profit = Decimal::from_f64(self.config.arbitrage_settings.min_profit_percentage).unwrap();
+        let adjusted_min_profit = min_profit * Decimal::from_f64(1.5).unwrap(); // 使用150%的阈值，因为订单簿分析已经考虑了滑点
         
         let is_valid = opportunity.profit_percentage >= adjusted_min_profit;
         

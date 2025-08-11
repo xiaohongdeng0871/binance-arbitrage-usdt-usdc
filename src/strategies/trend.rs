@@ -10,6 +10,7 @@ use rust_decimal_macros::dec;
 use std::sync::Mutex;
 use std::collections::VecDeque;
 use chrono::{DateTime, Utc, Duration};
+use rust_decimal::prelude::FromPrimitive;
 
 /// 趋势类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -192,7 +193,7 @@ impl TradingStrategy for TrendFollowingStrategy {
         );
         
         // 基于趋势做出决策
-        let max_trade_amount = Decimal::from(self.config.arbitrage_settings.max_trade_amount_usdt);
+        let max_trade_amount = Decimal::from_f64(self.config.arbitrage_settings.max_trade_amount_usdt).unwrap();
         
         // 套利方向决策
         let mut opportunity = if usdt_price.price < usdc_price.price {
@@ -262,7 +263,7 @@ impl TradingStrategy for TrendFollowingStrategy {
     
     async fn validate_opportunity(&self, opportunity: &ArbitrageOpportunity) -> Result<bool> {
         // 获取最小利润阈值
-        let min_profit = Decimal::from(self.config.arbitrage_settings.min_profit_percentage);
+        let min_profit = Decimal::from_f64(self.config.arbitrage_settings.min_profit_percentage).unwrap();
         
         // 在趋势强烈的情况下，增加最小利润要求
         let (usdt_trend, usdt_strength) = self.calculate_trend(true);

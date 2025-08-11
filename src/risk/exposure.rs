@@ -37,13 +37,14 @@ impl<T: ExchangeApi + Send + Sync + 'static> ExposureController<T> {
     
     /// 更新当前持仓
     pub async fn update_positions(&self) -> Result<()> {
-        let mut positions = self.current_positions.lock().unwrap();
-        
+
         for (asset, _) in &self.max_exposures {
             let balance = self.api.get_account_balance(asset).await?;
-            positions.insert(asset.clone(), balance);
-            
-            debug!("更新持仓: {} = {}", asset, balance);
+            {
+                let mut positions = self.current_positions.lock().unwrap();
+                positions.insert(asset.clone(), balance);
+                debug!("更新持仓: {} = {}", asset, balance);
+            }
         }
         
         Ok(())

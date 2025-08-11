@@ -11,6 +11,7 @@ use std::sync::Mutex;
 use std::collections::VecDeque;
 use chrono::{DateTime, Utc};
 use mysql_common::bigdecimal::num_traits::real::Real;
+use rust_decimal::prelude::FromPrimitive;
 
 /// 滑点控制策略
 /// 通过控制下单时的价格滑点，避免在价格波动较大的市场中产生亏损
@@ -77,6 +78,7 @@ impl SlippageControlStrategy {
         // 计算USDC价格的统计数据
         let usdc_prices: Vec<Decimal> = history.iter().map(|(_, _, usdc)| *usdc).collect();
         let usdc_mean = usdc_prices.iter().sum::<Decimal>() / Decimal::from(usdc_prices.len());
+
         
         let usdc_variance_sum = usdc_prices.iter()
             .map(|p| (*p - usdc_mean).powu(2))
@@ -150,7 +152,7 @@ impl TradingStrategy for SlippageControlStrategy {
         // 记录价格历史
         self.record_price(usdt_price.price, usdc_price.price);
         
-        let max_trade_amount = Decimal::from(self.config.arbitrage_settings.max_trade_amount_usdt);
+        let max_trade_amount = Decimal::from_f64(self.config.arbitrage_settings.max_trade_amount_usdt).unwrap();
         
         // 基于当前价格创建潜在的套利机会
         let mut opportunity = if usdt_price.price < usdc_price.price {
@@ -193,7 +195,7 @@ impl TradingStrategy for SlippageControlStrategy {
     }
     
     async fn validate_opportunity(&self, opportunity: &ArbitrageOpportunity) -> Result<bool> {
-        let min_profit = Decimal::from(self.config.arbitrage_settings.min_profit_percentage);
+        let min_profit = Decimal::from_f64(self.config.arbitrage_settings.min_profit_percentage).unwrap();
         
         // 根据波动率调整最小利润要求
         let (usdt_vol, usdc_vol) = self.calculate_volatility();
