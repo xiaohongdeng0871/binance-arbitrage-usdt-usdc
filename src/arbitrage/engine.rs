@@ -11,6 +11,7 @@ use rust_decimal_macros::dec;
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 use std::collections::HashMap;
+use rust_decimal::prelude::FromPrimitive;
 
 /// 套利引擎，使用多种交易策略和风控机制进行USDT和USDC之间的套利
 pub struct ArbitrageEngine<T: ExchangeApi + Send + Sync + 'static> {
@@ -303,11 +304,11 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
                         Ok(true) => {
                             if opportunity.profit_percentage > best_profit {
                                 best_profit = opportunity.profit_percentage;
-                                best_opportunity = Some(opportunity);
                                 debug!(
                                     "发现更优套利机会 (策略: {}): 利润率 {}%, 价差: {}",
                                     strategy.name(), opportunity.profit_percentage, opportunity.price_diff
                                 );
+                                best_opportunity = Some(opportunity);
                             }
                         },
                         Ok(false) => {

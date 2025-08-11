@@ -2,7 +2,7 @@ use super::RiskController;
 use crate::models::{ArbitrageOpportunity, ArbitrageResult};
 use anyhow::Result;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc, Local, NaiveTime, Timelike};
+use chrono::{DateTime, Utc, Local, NaiveTime, Timelike, Datelike};
 use log::{debug, info, warn};
 use std::sync::Arc;
 

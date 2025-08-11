@@ -10,6 +10,7 @@ use rust_decimal_macros::dec;
 use std::sync::Mutex;
 use std::collections::VecDeque;
 use chrono::{DateTime, Utc};
+use mysql_common::bigdecimal::num_traits::real::Real;
 
 /// 滑点控制策略
 /// 通过控制下单时的价格滑点，避免在价格波动较大的市场中产生亏损

@@ -2,7 +2,7 @@
 
 use crate::db::{DatabaseManager, TradeStats, DailyStats, AssetStats};
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc, Duration, Local, TimeZone, NaiveDate};
+use chrono::{DateTime, Utc, Duration, Local, TimeZone, NaiveDate, Datelike};
 use log::{debug, info, warn, error};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
@@ -12,6 +12,7 @@ use std::fs::File;
 use std::io::Write;
 use std::collections::HashMap;
 use csv::Writer as CsvWriter;
+use rust_decimal::prelude::ToPrimitive;
 
 /// 分析时间范围
 pub enum TimeRange {

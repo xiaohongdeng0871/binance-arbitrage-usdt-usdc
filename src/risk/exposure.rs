@@ -8,6 +8,7 @@ use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use rust_decimal::prelude::Zero;
 
 /// 风险敞口控制器
 /// 控制单一币种的风险敞口，避免在特定币种上持有过多资产

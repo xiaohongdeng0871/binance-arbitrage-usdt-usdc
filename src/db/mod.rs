@@ -1,7 +1,7 @@
 //! 数据库模块，负责与MySQL交互并提供套利历史和绩效数据的存储与检索
 
 use anyhow::{Context, Result, anyhow};
-use sqlx::{MySql, MySqlPool, Pool};
+use sqlx::{MySql, MySqlPool, Pool, Row};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use crate::models::{ArbitrageResult, ArbitrageStatus};
