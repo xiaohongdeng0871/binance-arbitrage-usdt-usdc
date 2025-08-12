@@ -107,9 +107,10 @@ impl RiskController for DailyLossLimitController {
 
 #[cfg(test)]
 mod tests {
+    use std::ops::Add;
     use super::*;
     use crate::models::{QuoteCurrency, ArbitrageStatus};
-    use chrono::Utc;
+    use chrono::{Duration, Utc};
     
     #[tokio::test]
     async fn test_daily_loss_limit() {
@@ -142,7 +143,8 @@ mod tests {
             buy_order_id: Some(1),
             sell_order_id: Some(2),
             status: ArbitrageStatus::Completed,
-            timestamp: Utc::now(),
+            start_time: Utc::now(),
+            end_time: Some(Utc::now().add(Duration::seconds(10))),
         };
         
         // 记录亏损

@@ -110,9 +110,9 @@ impl RiskController for TradingTimeWindowController {
 mod tests {
     use super::*;
     use crate::models::{ArbitrageOpportunity, QuoteCurrency};
-    use chrono::NaiveTime;
-    use rust_decimal_macros::dec;
-    
+    use rust_decimal::prelude::*;
+    use rust_decimal::dec;
+
     #[tokio::test]
     async fn test_trading_time_window() {
         // 创建一个控制器，允许交易时间为9:30-16:00，周末不交易

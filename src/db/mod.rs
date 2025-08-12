@@ -384,6 +384,11 @@ impl DatabaseManager {
             
             let start_time: NaiveDateTime = row.get("start_time");
             let start_time = Utc.from_utc_datetime(&start_time);
+
+            let end_time: Option<NaiveDateTime> = row.get("end_time");
+            let end_time = end_time.map(|time| Utc.from_utc_datetime(&time));
+
+
             
             results.push(ArbitrageResult {
                 base_asset,
@@ -397,7 +402,8 @@ impl DatabaseManager {
                 buy_order_id: buy_order_id.map(|id| id as u64),
                 sell_order_id: sell_order_id.map(|id| id as u64),
                 status,
-                timestamp: start_time,
+                start_time: start_time,
+                end_time: end_time,
             });
         }
         

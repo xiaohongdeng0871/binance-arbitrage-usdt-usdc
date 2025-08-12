@@ -144,7 +144,8 @@ pub struct ArbitrageResult {
     pub buy_order_id: Option<u64>,
     pub sell_order_id: Option<u64>,
     pub status: ArbitrageStatus,
-    pub timestamp: DateTime<Utc>,
+    pub start_time: DateTime<Utc>,
+    pub end_time: Option<DateTime<Utc>>,
 }
 
 /// 套利状态

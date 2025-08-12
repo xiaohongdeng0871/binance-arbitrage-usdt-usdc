@@ -117,7 +117,7 @@ impl RiskController for TradingFrequencyController {
             
             info!(
                 "记录交易结果: {} - 状态: {:?}, 时间: {}",
-                result.base_asset, result.status, result.timestamp
+                result.base_asset, result.status, Utc::now()
             );
         }
         
@@ -139,9 +139,10 @@ impl RiskController for TradingFrequencyController {
 
 #[cfg(test)]
 mod tests {
+    use std::ops::Add;
     use super::*;
     use crate::models::{QuoteCurrency};
-    use rust_decimal_macros::dec;
+    use rust_decimal::dec;
     
     #[tokio::test]
     async fn test_trading_frequency() {
@@ -175,7 +176,8 @@ mod tests {
             buy_order_id: Some(1),
             sell_order_id: Some(2),
             status: ArbitrageStatus::Completed,
-            timestamp: Utc::now(),
+            start_time: Utc::now(),
+            end_time: Some(Utc::now().add(Duration::seconds(29)))
         };
         
         controller.record_result(&result).await.unwrap();

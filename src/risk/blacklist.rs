@@ -125,7 +125,7 @@ impl RiskController for PairBlacklistController {
 mod tests {
     use super::*;
     use crate::models::{QuoteCurrency};
-    use rust_decimal_macros::dec;
+    use rust_decimal::dec;
     
     #[tokio::test]
     async fn test_pair_blacklist() {
