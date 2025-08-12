@@ -6,8 +6,7 @@ use crate::risk::{RiskManager, RiskController, DailyLossLimitController, Abnorma
 use crate::db::DatabaseManager;
 use anyhow::{anyhow, Context, Result};
 use log::{debug, info, warn, error};
-use rust_decimal::Decimal;
-use rust_decimal_macros::dec;
+use rust_decimal::{dec, Decimal};
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 use std::collections::HashMap;
@@ -333,7 +332,7 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
         
         // 如果没有找到任何机会，创建一个基本的机会（默认使用简单策略的逻辑）
         if best_opportunity.is_none() {
-            let max_trade_amount = Decimal::from(self.config.arbitrage_settings.max_trade_amount_usdt);
+            let max_trade_amount = Decimal::from_f64(self.config.arbitrage_settings.max_trade_amount_usdt).unwrap();
             
             let opportunity = if usdt_price.price < usdc_price.price {
                 // USDT买入，USDC卖出

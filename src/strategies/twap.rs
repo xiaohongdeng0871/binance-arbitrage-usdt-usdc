@@ -4,11 +4,12 @@ use crate::config::Config;
 use anyhow::Result;
 use async_trait::async_trait;
 use rust_decimal::Decimal;
+use rust_decimal::dec;
 use std::sync::Arc;
 use log::{debug, info};
 use std::sync::Mutex;
 use chrono::{DateTime, Duration, Utc};
-use rust_decimal::prelude::FromPrimitive;
+use rust_decimal::prelude::*;
 
 /// 时间加权平均价格（TWAP）策略
 /// 将一个大的套利订单分解成多个小订单，在特定时间段内均匀执行

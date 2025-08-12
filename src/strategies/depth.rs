@@ -4,11 +4,10 @@ use crate::models::{ArbitrageOpportunity, Price, QuoteCurrency, OrderBook};
 use crate::config::Config;
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
-use rust_decimal::Decimal;
+use rust_decimal::{Decimal,dec};
 use std::sync::Arc;
 use log::{debug, info, warn};
-use rust_decimal::prelude::FromPrimitive;
-use rust_decimal_macros::dec;
+use rust_decimal::prelude::*;
 
 /// 订单簿深度分析策略
 /// 通过分析订单簿深度来判断市场流动性和潜在的滑点，避免在流动性不足的市场中进行套利

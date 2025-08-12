@@ -3,14 +3,13 @@ use crate::models::{ArbitrageOpportunity, Price, QuoteCurrency};
 use crate::config::Config;
 use anyhow::Result;
 use async_trait::async_trait;
-use rust_decimal::Decimal;
+use rust_decimal::{Decimal,dec};
 use std::sync::Arc;
 use log::{debug, info, warn};
-use rust_decimal_macros::dec;
 use std::sync::Mutex;
 use std::collections::VecDeque;
 use chrono::{DateTime, Utc, Duration};
-use rust_decimal::prelude::FromPrimitive;
+use rust_decimal::prelude::*;
 
 /// 趋势类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

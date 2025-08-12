@@ -3,8 +3,7 @@ use crate::models::{OrderBook, Price, QuoteCurrency, Side, Symbol, OrderInfo, Or
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use chrono::Utc;
-use rust_decimal::Decimal;
-use rust_decimal_macros::dec;
+use rust_decimal::{Decimal,dec};
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};

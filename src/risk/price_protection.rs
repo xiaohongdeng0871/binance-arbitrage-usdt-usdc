@@ -4,8 +4,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc, Duration};
 use log::{debug, info, warn, error};
-use rust_decimal::Decimal;
-use rust_decimal_macros::dec;
+use rust_decimal::{Decimal,dec};
 use std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
 

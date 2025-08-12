@@ -6,12 +6,11 @@ use async_trait::async_trait;
 use rust_decimal::Decimal;
 use std::sync::Arc;
 use log::{debug, info, warn};
-use rust_decimal_macros::dec;
 use std::sync::Mutex;
 use std::collections::VecDeque;
 use chrono::{DateTime, Utc};
 use mysql_common::bigdecimal::num_traits::real::Real;
-use rust_decimal::prelude::FromPrimitive;
+use rust_decimal::prelude::*;
 
 /// 滑点控制策略
 /// 通过控制下单时的价格滑点，避免在价格波动较大的市场中产生亏损
@@ -87,7 +86,7 @@ impl SlippageControlStrategy {
         let usdc_std_dev = (usdc_variance_sum / Decimal::from(usdc_prices.len() - 1))
             .sqrt()
             .unwrap_or(Decimal::ZERO);
-            
+
         let usdc_volatility = if usdc_mean.is_zero() {
             Decimal::ZERO
         } else {

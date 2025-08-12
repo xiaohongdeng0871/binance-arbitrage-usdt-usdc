@@ -4,8 +4,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc, Local, Datelike};
 use log::{debug, info, warn};
-use rust_decimal::Decimal;
-use rust_decimal_macros::dec;
+use rust_decimal::{Decimal,dec};
 use std::sync::{Arc, Mutex};
 
 /// 每日亏损限制控制器
