@@ -6,8 +6,9 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use crate::models::{ArbitrageResult, ArbitrageStatus};
 use chrono::{DateTime, Utc, NaiveDateTime, Duration, TimeZone};
+use clap::builder::TypedValueParser;
 use log::{info, warn, error, debug};
-use rust_decimal::Decimal;
+use rust_decimal::{dec, Decimal};
 use serde::{Serialize, Deserialize};
 
 /// 数据库连接管理器
@@ -70,7 +71,7 @@ impl DatabaseManager {
     /// 记录套利结果
     pub async fn record_arbitrage_result(&self, result: &ArbitrageResult) -> Result<i64> {
         let duration_ms = (result.end_time - result.start_time).num_milliseconds() as i64;
-        
+
         // 插入交易历史
         let id = sqlx::query!(
             r#"
@@ -91,8 +92,8 @@ impl DatabaseManager {
             result.buy_order_id.map(|id| id as i64),
             result.sell_order_id.map(|id| id as i64),
             format!("{:?}", result.status),
-            result.start_time.naive_utc(),
-            result.end_time.naive_utc(),
+            result.start_time,
+            result.end_time,
             duration_ms
         )
         .execute(&*self.pool)
@@ -130,7 +131,7 @@ impl DatabaseManager {
         // 更新币种统计
         sqlx::query!(
             r#"
-            INSERT INTO asset_stats (asset, trades, successful_trades, failed_trades, total_profit, total_volume)
+            INSERT INTO asset_stats (asset, trades, trades, profit, volume)
             VALUES (?, 1, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 trades = trades + 1,
@@ -163,42 +164,33 @@ impl DatabaseManager {
             r#"
             SELECT
                 COUNT(*) as total_trades,
-                SUM(IF(status = 'Completed', 1, 0)) as successful_trades,
-                SUM(IF(status != 'Completed', 1, 0)) as failed_trades,
+                SUM(IF(status = 'Completed', 1, 0)) as "successful_trades!: i64",
+                SUM(IF(status != 'Completed', 1, 0)) as "failed_trades!: i64",
                 SUM(profit) as total_profit,
                 SUM(trade_amount) as total_volume,
                 AVG(profit) as avg_profit,
                 MAX(profit) as max_profit,
                 MIN(profit) as min_profit,
-                AVG(duration_ms) as avg_duration
+                AVG(duration_ms) as "avg_duration!: i64"
             FROM arbitrage_history
             "#
         )
         .fetch_one(&*self.pool)
         .await?;
-        
-        let total_trades = result.total_trades.unwrap_or(0);
-        let successful_trades = result.successful_trades.unwrap_or(0);
-        let failed_trades = result.failed_trades.unwrap_or(0);
-        
-        let total_profit = result.total_profit.map(|s| s.parse::<Decimal>().unwrap_or_default()).unwrap_or_default();
-        let total_volume = result.total_volume.map(|s| s.parse::<Decimal>().unwrap_or_default()).unwrap_or_default();
-        let avg_profit = result.avg_profit.map(|s| s.parse::<Decimal>().unwrap_or_default()).unwrap_or_default();
-        let max_profit = result.max_profit.map(|s| s.parse::<Decimal>().unwrap_or_default()).unwrap_or_default();
-        let min_profit = result.min_profit.map(|s| s.parse::<Decimal>().unwrap_or_default()).unwrap_or_default();
-        
+
         let stats = TradeStats {
-            total_trades,
-            successful_trades,
-            failed_trades,
-            total_profit,
-            total_volume,
-            avg_profit_per_trade: avg_profit,
-            max_profit,
-            max_loss: min_profit,
-            avg_trade_duration_ms: result.avg_duration.unwrap_or(0),
+            total_trades: result.total_trades,
+            successful_trades: result.successful_trades,
+            failed_trades: result.failed_trades,
+            total_profit: result.total_profit.unwrap_or_default(),
+            total_volume: result.total_volume.unwrap_or_default(),
+            avg_profit_per_trade: result.avg_profit.unwrap_or_default(),
+            max_profit: result.max_profit.unwrap_or_default(),
+            max_loss: result.min_profit.unwrap_or_default(),
+            avg_trade_duration_ms: result.avg_duration,
         };
-        
+
+
         Ok(stats)
     }
     
@@ -232,10 +224,9 @@ impl DatabaseManager {
             } else {
                 0.0
             };
-            
-            let profit = row.total_profit.parse::<Decimal>().unwrap_or_default();
-            let volume = row.total_volume.parse::<Decimal>().unwrap_or_default();
-            
+
+            let profit = row.total_profit;
+            let volume = row.total_volume;
             stats.push(DailyStats {
                 date,
                 trades,
@@ -255,8 +246,8 @@ impl DatabaseManager {
             SELECT
                 asset,
                 trades,
-                total_profit,
-                total_volume
+                profit,
+                volume
             FROM asset_stats
             ORDER BY total_profit DESC
             LIMIT ?
@@ -270,8 +261,8 @@ impl DatabaseManager {
         
         for row in result {
             let trades = row.trades as i64;
-            let profit = row.total_profit.parse::<Decimal>().unwrap_or_default();
-            let volume = row.total_volume.parse::<Decimal>().unwrap_or_default();
+            let profit = row.profit;
+            let volume = row.volume;
             let avg_profit = if trades > 0 {
                 profit / Decimal::from(trades)
             } else {
@@ -347,7 +338,7 @@ impl DatabaseManager {
         let mut results = Vec::new();
         
         for row in rows {
-            let id: i64 = row.get("id");
+            let _: i64 = row.get("id");
             let base_asset: String = row.get("base_asset");
             let buy_quote: String = row.get("buy_quote");
             let sell_quote: String = row.get("sell_quote");
@@ -414,10 +405,11 @@ impl DatabaseManager {
 // 模块测试
 #[cfg(test)]
 mod tests {
+    use std::ops::Add;
     use super::*;
     use crate::models::{ArbitrageStatus};
-    use rust_decimal_macros::dec;
-    
+    use rust_decimal::dec;
+
     // 这些测试需要有一个可用的MySQL数据库
     // 可以在测试时通过环境变量设置数据库连接字符串
     async fn get_test_db() -> DatabaseManager {
@@ -443,9 +435,8 @@ mod tests {
             buy_order_id: Some(1),
             sell_order_id: Some(2),
             status: ArbitrageStatus::Completed,
-            timestamp: Utc::now(),
             start_time: Utc::now(),
-            end_time: Utc::now(),
+            end_time: Some(Utc::now().add(Duration::hours(1))),
         };
         let id = db.record_arbitrage_result(&result).await.expect("记录套利结果失败");
         assert!(id > 0);

@@ -119,7 +119,7 @@ impl BinanceApi {
 #[async_trait]
 impl ExchangeApi for BinanceApi {
     async fn get_symbol_info(&self, symbol: &str) -> Result<Symbol> {
-        let params: HashMap<String, String> = HashMap::new();
+        let _: HashMap<String, String> = HashMap::new();
         let response = self.send_public_request("/api/v3/exchangeInfo", None).await?;
         
         if let Some(symbols) = response["symbols"].as_array() {

@@ -2,7 +2,7 @@ use crate::binance::ExchangeApi;
 use crate::config::{Config, StrategyType, RiskControllerType};
 use crate::models::{ArbitrageOpportunity, ArbitrageResult, ArbitrageStatus, OrderStatus, Price, QuoteCurrency, Side};
 use crate::strategies::{TradingStrategy, SimpleArbitrageStrategy, TimeWeightedAverageStrategy, OrderBookDepthStrategy, SlippageControlStrategy, TrendFollowingStrategy};
-use crate::risk::{RiskManager, RiskController, DailyLossLimitController, AbnormalPriceController, ExposureController, TradingTimeWindowController, TradingFrequencyController, PairBlacklistController};
+use crate::risk::{RiskManager, DailyLossLimitController, AbnormalPriceController, ExposureController, TradingTimeWindowController, TradingFrequencyController, PairBlacklistController};
 use crate::db::DatabaseManager;
 use anyhow::{anyhow, Context, Result};
 use log::{debug, info, warn, error};
@@ -10,6 +10,7 @@ use rust_decimal::{dec, Decimal};
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 use std::collections::HashMap;
+use chrono::Utc;
 use rust_decimal::prelude::FromPrimitive;
 
 /// 套利引擎，使用多种交易策略和风控机制进行USDT和USDC之间的套利
@@ -380,7 +381,8 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
             buy_order_id: None,
             sell_order_id: None,
             status: ArbitrageStatus::Identified,
-            timestamp: opportunity.timestamp,
+            start_time: Utc::now(),
+            end_time: None,
         };
         
         // 构造交易对

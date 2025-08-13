@@ -265,8 +265,8 @@ impl TradingStrategy for TrendFollowingStrategy {
         let min_profit = Decimal::from_f64(self.config.arbitrage_settings.min_profit_percentage).unwrap();
         
         // 在趋势强烈的情况下，增加最小利润要求
-        let (usdt_trend, usdt_strength) = self.calculate_trend(true);
-        let (usdc_trend, usdc_strength) = self.calculate_trend(false);
+        let (_, usdt_strength) = self.calculate_trend(true);
+        let (_, usdc_strength) = self.calculate_trend(false);
         
         let trend_strength = usdt_strength.max(usdc_strength);
         

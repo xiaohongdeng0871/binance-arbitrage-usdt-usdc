@@ -150,7 +150,7 @@ impl AnalyticsManager {
     
     /// 生成绩效分析报告
     pub async fn generate_report(&self, range: TimeRange) -> Result<PerformanceReport> {
-        let (start_date, end_date) = range.get_date_range();
+        let (_, _) = range.get_date_range();
         
         // 获取总体统计
         let overview = self.db.get_overall_stats().await?;

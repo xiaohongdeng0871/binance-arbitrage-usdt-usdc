@@ -49,3 +49,5 @@ CREATE TABLE `asset_stats` (
                                PRIMARY KEY (`id`),
                                UNIQUE KEY `uk_asset` (`asset`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='币种交易统计表';
+
+ALTER TABLE `arbitrage_history` MODIFY COLUMN `end_time` datetime DEFAULT NULL COMMENT '结束时间';

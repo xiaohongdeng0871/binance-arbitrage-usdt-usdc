@@ -176,7 +176,7 @@ impl RiskController for AbnormalPriceController {
         Ok((true, None))
     }
     
-    async fn record_result(&self, result: &ArbitrageResult) -> Result<()> {
+    async fn record_result(&self, _: &ArbitrageResult) -> Result<()> {
         // 这个控制器不需要记录交易结果
         Ok(())
     }

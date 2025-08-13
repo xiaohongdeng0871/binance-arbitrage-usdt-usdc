@@ -7,21 +7,16 @@ authors = ["Kwaipilot"]
 
 [dependencies]
 tokio = { version = "1.28", features = ["full"] }
-binance = "0.20.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 rust_decimal =  { version = "1.37", features = ["macros","maths"] }
 log = "0.4"
-env_logger = "0.10"
 dotenv = "0.15"
-thiserror = "1.0"
 anyhow = "1.0"
 reqwest = { version = "0.11", features = ["json"] }
-futures = "0.3"
 clap = { version = "4.3", features = ["derive"] }
 chrono = { version = "0.4",features = ["serde"] }
 csv = "1.2"
-config = "0.13"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 async-trait = "0.1"
@@ -31,10 +26,4 @@ hmac = "0.12"
 sha2 = "0.10"
 
 # 数据库依赖
-sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "mysql", "chrono"] }
-mysql = "24.0"
-mysql_common = "0.30"
-
-# 图表和分析依赖
-plotters = { version = "0.3", features = ["all_series", "all_elements"] }
-statrs = "0.16"
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "mysql", "chrono","rust_decimal","uuid","json"] }

@@ -21,10 +21,10 @@ pub struct OrderBookDepthStrategy<T: ExchangeApi + Send + Sync> {
 }
 
 impl<T: ExchangeApi + Send + Sync + 'static> OrderBookDepthStrategy<T> {
-    pub fn new(config: Config, api: T, depth_levels: usize, min_liquidity: Decimal) -> Self {
+    pub fn new(config: Config, api: Arc<T>, depth_levels: usize, min_liquidity: Decimal) -> Self {
         Self {
             config: Arc::new(config),
-            api: Arc::new(api),
+            api,
             depth_levels,
             min_liquidity,
         }

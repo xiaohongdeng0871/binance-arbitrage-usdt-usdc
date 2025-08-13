@@ -20,9 +20,9 @@ pub struct ExposureController<T: ExchangeApi + Send + Sync> {
 }
 
 impl<T: ExchangeApi + Send + Sync + 'static> ExposureController<T> {
-    pub fn new(api: T) -> Self {
+    pub fn new(api: Arc<T>) -> Self {
         Self {
-            api: Arc::new(api),
+            api,
             max_exposures: HashMap::new(),
             current_positions: Arc::new(Mutex::new(HashMap::new())),
         }
@@ -105,7 +105,7 @@ impl<T: ExchangeApi + Send + Sync + 'static> RiskController for ExposureControll
             let mut positions = self.current_positions.lock().unwrap();
             
             // 更新基础资产头寸（买入后卖出，净变化应该很小，但仍然要记录）
-            let current = positions.entry(result.base_asset.clone()).or_insert(Decimal::ZERO);
+            let _ = positions.entry(result.base_asset.clone()).or_insert(Decimal::ZERO);
             
             // 这里假设交易已经完成，资产头寸已经反映在账户余额中
             // 实际上应该再次调用API获取最新头寸，但这里为了简化，我们只是记录交易

@@ -9,7 +9,6 @@ use log::{debug, info, warn};
 use std::sync::Mutex;
 use std::collections::VecDeque;
 use chrono::{DateTime, Utc};
-use mysql_common::bigdecimal::num_traits::real::Real;
 use rust_decimal::prelude::*;
 
 /// 滑点控制策略
