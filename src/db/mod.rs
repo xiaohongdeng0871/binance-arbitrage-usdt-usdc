@@ -249,7 +249,7 @@ impl DatabaseManager {
                 profit,
                 volume
             FROM asset_stats
-            ORDER BY total_profit DESC
+            ORDER BY profit DESC
             LIMIT ?
             "#,
             limit

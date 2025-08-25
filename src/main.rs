@@ -24,7 +24,8 @@ use rand::Rng;
 use rust_decimal::{Decimal,dec};
 use std::str::FromStr;
 use std::fs;
-use chrono::{DateTime, Utc, Local, NaiveDate};
+use chrono::{DateTime, Utc, Local, NaiveDate, TimeZone};
+use rust_decimal::prelude::FromPrimitive;
 
 /// 币安 USDT-USDC 套利程序
 #[derive(Parser, Debug)]

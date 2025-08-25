@@ -10,6 +10,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use log::{debug, info, warn};
 
 /// 模拟币安API，用于测试和开发
+#[derive(Debug,Clone)]
 pub struct MockBinanceApi {
     prices: Arc<Mutex<HashMap<String, Decimal>>>,
     balances: Arc<Mutex<HashMap<String, Decimal>>>,
