@@ -1,10 +1,10 @@
 use super::RiskController;
-use crate::models::{ArbitrageOpportunity, ArbitrageResult, ArbitrageStatus, QuoteCurrency};
+use crate::models::{ArbitrageOpportunity, ArbitrageResult, ArbitrageStatus};
 use crate::binance::ExchangeApi;
 use anyhow::Result;
 use async_trait::async_trait;
 use log::{debug, info, warn};
-use rust_decimal::{Decimal,dec};
+use rust_decimal::{Decimal};
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use rust_decimal::prelude::Zero;

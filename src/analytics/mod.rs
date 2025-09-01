@@ -1,15 +1,14 @@
 //! 套利绩效分析模块，提供数据分析和报告生成功能
 
 use crate::db::{DatabaseManager, TradeStats, DailyStats, AssetStats};
-use anyhow::{Context, Result};
+use anyhow::{Result};
 use chrono::{DateTime, Utc, Duration, Local, TimeZone, NaiveDate, Datelike};
-use log::{debug, info, warn, error};
+use log::{info};
 use rust_decimal::{Decimal,dec};
 use serde::{Serialize, Deserialize};
 use std::path::Path;
 use std::fs::File;
 use std::io::Write;
-use std::collections::HashMap;
 use csv::Writer as CsvWriter;
 use rust_decimal::prelude::ToPrimitive;
 

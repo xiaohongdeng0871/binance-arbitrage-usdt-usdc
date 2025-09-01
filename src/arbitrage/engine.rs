@@ -1,10 +1,10 @@
 use crate::binance::ExchangeApi;
 use crate::config::{Config, StrategyType, RiskControllerType};
-use crate::models::{ArbitrageOpportunity, ArbitrageResult, ArbitrageStatus, OrderStatus, Price, QuoteCurrency, Side};
+use crate::models::{ArbitrageOpportunity, ArbitrageResult, ArbitrageStatus, OrderStatus, QuoteCurrency, Side};
 use crate::strategies::{TradingStrategy, SimpleArbitrageStrategy, TimeWeightedAverageStrategy, OrderBookDepthStrategy, SlippageControlStrategy, TrendFollowingStrategy};
 use crate::risk::{RiskManager, DailyLossLimitController, AbnormalPriceController, ExposureController, TradingTimeWindowController, TradingFrequencyController, PairBlacklistController};
 use crate::db::DatabaseManager;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use log::{debug, info, warn, error};
 use rust_decimal::{dec, Decimal};
 use std::sync::Arc;

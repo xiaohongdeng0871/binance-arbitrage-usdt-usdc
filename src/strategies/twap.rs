@@ -4,7 +4,6 @@ use crate::config::Config;
 use anyhow::Result;
 use async_trait::async_trait;
 use rust_decimal::Decimal;
-use rust_decimal::dec;
 use std::sync::Arc;
 use log::{debug, info};
 use std::sync::Mutex;

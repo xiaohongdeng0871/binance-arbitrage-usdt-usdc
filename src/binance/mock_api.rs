@@ -1,13 +1,13 @@
 use crate::binance::ExchangeApi;
-use crate::models::{OrderBook, Price, QuoteCurrency, Side, Symbol, OrderInfo, OrderStatus};
-use anyhow::{anyhow, Context, Result};
+use crate::models::{OrderBook, Price, Side, Symbol, OrderInfo, OrderStatus};
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use chrono::Utc;
 use rust_decimal::{Decimal,dec};
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
-use log::{debug, info, warn};
+use log::{ info};
 
 /// 模拟币安API，用于测试和开发
 #[derive(Debug,Clone)]

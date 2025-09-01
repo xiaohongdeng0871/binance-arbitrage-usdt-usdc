@@ -3,7 +3,7 @@ use crate::models::{ArbitrageOpportunity, ArbitrageResult, ArbitrageStatus};
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc, Duration};
-use log::{debug, info, warn};
+use log::{debug, info};
 use std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
 

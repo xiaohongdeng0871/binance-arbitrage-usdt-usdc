@@ -2,7 +2,7 @@ use super::RiskController;
 use crate::models::{ArbitrageOpportunity, ArbitrageResult};
 use anyhow::Result;
 use async_trait::async_trait;
-use log::{debug, info, warn};
+use log::{debug, info};
 use std::sync::{Arc, Mutex};
 use std::collections::HashSet;
 
