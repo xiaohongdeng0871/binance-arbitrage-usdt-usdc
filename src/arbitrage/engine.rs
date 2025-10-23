@@ -9,7 +9,6 @@ use log::{debug, info, warn, error};
 use rust_decimal::{dec, Decimal};
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
-use std::collections::HashMap;
 use chrono::Utc;
 use rust_decimal::prelude::FromPrimitive;
 
@@ -255,7 +254,8 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
                                 buy_order_id: None,
                                 sell_order_id: None,
                                 status: ArbitrageStatus::Failed,
-                                timestamp: opportunity.timestamp,
+                                start_time: opportunity.timestamp,
+                                end_time: Some(Utc::now()),
                             };
                             
                             self.risk_manager.record_result(&failed_result).await?;
@@ -380,7 +380,7 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
             profit_percentage: opportunity.profit_percentage,
             buy_order_id: None,
             sell_order_id: None,
-            status: ArbitrageStatus::Identified,
+            status: ArbitrageStatus::Executing,
             start_time: Utc::now(),
             end_time: None,
         };
@@ -410,7 +410,7 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
         };
         
         // 等待买入订单完成
-        let mut buy_order_status = buy_order;
+        let mut buy_order_status = buy_order.clone();
         for _ in 0..10 {
             if buy_order_status.status == OrderStatus::Filled {
                 break;
@@ -445,7 +445,7 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
         };
         
         // 等待卖出订单完成
-        let mut sell_order_status = sell_order;
+        let mut sell_order_status = sell_order.clone();
         for _ in 0..10 {
             if sell_order_status.status == OrderStatus::Filled {
                 break;

@@ -2,18 +2,16 @@
 
 use anyhow::{Context, Result};
 use sqlx::{ MySqlPool, Row};
-use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::sync::Arc;
 use crate::models::{ArbitrageResult, ArbitrageStatus};
 use chrono::{DateTime, Utc, NaiveDateTime, TimeZone};
-use log::{info, warn, error, debug};
+use log::{info, debug};
 use rust_decimal::{Decimal};
 use serde::{Serialize, Deserialize};
 
 /// 数据库连接管理器
 pub struct DatabaseManager {
     pool: Arc<MySqlPool>,
-    last_flush: Arc<Mutex<Instant>>,
 }
 
 /// 交易统计信息
@@ -59,7 +57,6 @@ impl DatabaseManager {
             
         let db_manager = Self {
             pool: Arc::new(pool),
-            last_flush: Arc::new(Mutex::new(Instant::now())),
         };
         
         info!("数据库连接初始化完成");
@@ -69,7 +66,7 @@ impl DatabaseManager {
     
     /// 记录套利结果
     pub async fn record_arbitrage_result(&self, result: &ArbitrageResult) -> Result<i64> {
-        let duration_ms = (result.end_time - result.start_time).num_milliseconds() as i64;
+        let duration_ms = (result.end_time.unwrap_or(result.start_time) - result.start_time).num_milliseconds() as i64;
 
         // 插入交易历史
         let id = sqlx::query!(
@@ -130,24 +127,18 @@ impl DatabaseManager {
         // 更新币种统计
         sqlx::query!(
             r#"
-            INSERT INTO asset_stats (asset, trades, trades, profit, volume)
-            VALUES (?, 1, ?, ?, ?, ?)
+            INSERT INTO asset_stats (asset, trades, profit, volume, avg_profit)
+            VALUES (?, 1, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 trades = trades + 1,
-                successful_trades = successful_trades + ?,
-                failed_trades = failed_trades + ?,
-                total_profit = total_profit + ?,
-                total_volume = total_volume + ?
+                profit = profit + VALUES(profit),
+                volume = volume + VALUES(volume),
+                avg_profit = profit / trades
             "#,
             result.base_asset,
-            if is_successful { 1 } else { 0 },
-            if is_successful { 0 } else { 1 },
             result.profit.to_string(),
             result.trade_amount.to_string(),
-            if is_successful { 1 } else { 0 },
-            if is_successful { 0 } else { 1 },
             result.profit.to_string(),
-            result.trade_amount.to_string()
         )
         .execute(&*self.pool)
         .await?;
@@ -363,6 +354,7 @@ impl DatabaseManager {
             let status: String = row.get("status");
             let status = match status.as_str() {
                 "Identified" => ArbitrageStatus::Identified,
+                "Executing" => ArbitrageStatus::Executing,
                 "BuyOrderPlaced" => ArbitrageStatus::BuyOrderPlaced,
                 "BuyOrderFilled" => ArbitrageStatus::BuyOrderFilled,
                 "SellOrderPlaced" => ArbitrageStatus::SellOrderPlaced,

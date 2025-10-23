@@ -40,13 +40,13 @@ impl TimeRange {
         
         match self {
             TimeRange::Today => {
-                let start = Local.from_local_date(&today).unwrap().and_hms_opt(0, 0, 0).unwrap().with_timezone(&Utc);
+                let start = Local.from_local_datetime(&today.and_hms_opt(0, 0, 0).unwrap()).unwrap().with_timezone(&Utc);
                 (Some(start), None)
             },
             TimeRange::Yesterday => {
                 let yesterday = today.pred_opt().unwrap();
-                let start = Local.from_local_date(&yesterday).unwrap().and_hms_opt(0, 0, 0).unwrap().with_timezone(&Utc);
-                let end = Local.from_local_date(&today).unwrap().and_hms_opt(0, 0, 0).unwrap().with_timezone(&Utc);
+                let start = Local.from_local_datetime(&yesterday.and_hms_opt(0, 0, 0).unwrap()).unwrap().with_timezone(&Utc);
+                let end = Local.from_local_datetime(&today.and_hms_opt(0, 0, 0).unwrap()).unwrap().with_timezone(&Utc);
                 (Some(start), Some(end))
             },
             TimeRange::Last7Days => {
@@ -61,7 +61,7 @@ impl TimeRange {
                 let current_month = today.month();
                 let current_year = today.year();
                 let first_day = NaiveDate::from_ymd_opt(current_year, current_month, 1).unwrap();
-                let start = Local.from_local_date(&first_day).unwrap().and_hms_opt(0, 0, 0).unwrap().with_timezone(&Utc);
+                let start = Local.from_local_datetime(&first_day.and_hms_opt(0, 0, 0).unwrap()).unwrap().with_timezone(&Utc);
                 (Some(start), None)
             },
             TimeRange::LastMonth => {
@@ -75,10 +75,10 @@ impl TimeRange {
                 };
                 
                 let first_day_prev = NaiveDate::from_ymd_opt(prev_year, prev_month, 1).unwrap();
-                let start = Local.from_local_date(&first_day_prev).unwrap().and_hms_opt(0, 0, 0).unwrap().with_timezone(&Utc);
+                let start = Local.from_local_datetime(&first_day_prev.and_hms_opt(0, 0, 0).unwrap()).unwrap().with_timezone(&Utc);
                 
                 let first_day_current = NaiveDate::from_ymd_opt(current_year, current_month, 1).unwrap();
-                let end = Local.from_local_date(&first_day_current).unwrap().and_hms_opt(0, 0, 0).unwrap().with_timezone(&Utc);
+                let end = Local.from_local_datetime(&first_day_current.and_hms_opt(0, 0, 0).unwrap()).unwrap().with_timezone(&Utc);
                 
                 (Some(start), Some(end))
             },

@@ -152,6 +152,7 @@ pub struct ArbitrageResult {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ArbitrageStatus {
     Identified,
+    Executing,
     BuyOrderPlaced,
     BuyOrderFilled,
     SellOrderPlaced,

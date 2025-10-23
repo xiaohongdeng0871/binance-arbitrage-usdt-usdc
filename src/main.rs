@@ -8,14 +8,14 @@ mod db;
 mod analytics;
 
 use arbitrage::ArbitrageEngine;
-use binance::{BinanceApi, ExchangeApi, MockBinanceApi};
-use clap::{Parser, Subcommand, ArgGroup};
+use binance::{BinanceApi, MockBinanceApi};
+use clap::{Parser, Subcommand};
 use config::{Config, StrategyType, RiskControllerType};
 use dotenv::dotenv;
 use db::DatabaseManager;
 use analytics::{AnalyticsManager, TimeRange};
-use std::path::{PathBuf, Path};
-use anyhow::{Context, Result};
+use std::path::PathBuf;
+use anyhow::Result;
 use tracing::{info, error, warn, debug, Level};
 use tracing_subscriber::FmtSubscriber;
 use std::time::Duration;
@@ -24,7 +24,7 @@ use rand::Rng;
 use rust_decimal::{Decimal,dec};
 use std::str::FromStr;
 use std::fs;
-use chrono::{DateTime, Utc, Local, NaiveDate, TimeZone};
+use chrono::{Utc, Local, NaiveDate, TimeZone};
 use rust_decimal::prelude::FromPrimitive;
 
 /// 币安 USDT-USDC 套利程序
@@ -193,7 +193,7 @@ async fn main() -> Result<()> {
     };
     
     match &args.command {
-        Command::Analytics { time_range, start_date, end_date, export_format, export_path, top_assets } => {
+        Command::Analytics { time_range, start_date, end_date, export_format, export_path, top_assets: _ } => {
             // 确保有数据库连接
             let db = match db_manager {
                 Some(db) => db,
@@ -222,10 +222,8 @@ async fn main() -> Result<()> {
                         let end_date = NaiveDate::from_str(end)
                             .map_err(|_| anyhow::anyhow!("无效的结束日期格式，应为YYYY-MM-DD"))?;
                             
-                        let start_datetime = Local.from_local_date(&start_date).unwrap()
-                            .and_hms_opt(0, 0, 0).unwrap().with_timezone(&Utc);
-                        let end_datetime = Local.from_local_date(&end_date).unwrap()
-                            .and_hms_opt(23, 59, 59).unwrap().with_timezone(&Utc);
+                        let start_datetime = Local.from_local_datetime(&start_date.and_hms_opt(0, 0, 0).unwrap()).unwrap().with_timezone(&Utc);
+                        let end_datetime = Local.from_local_datetime(&end_date.and_hms_opt(23, 59, 59).unwrap()).unwrap().with_timezone(&Utc);
                             
                         TimeRange::Custom(start_datetime, end_datetime)
                     } else {
@@ -381,7 +379,7 @@ async fn main() -> Result<()> {
             }
             
             // 开始监控套利机会
-            info!("开始监控套利机会...");
+            info!("开始监控 {}-USDT/USDC 套利机会", self.base_asset);
             engine.monitor_opportunities().await?;
         },
         Command::Simulate { volatility, opportunity_probability, runtime, .. } => {
@@ -430,12 +428,12 @@ async fn simulate_price_movements(api: &MockBinanceApi, base_asset: &str, volati
     // 构造交易对名称
     let usdt_symbol = format!("{}{}", base_asset, "USDT");
     let usdc_symbol = format!("{}{}", base_asset, "USDC");
-    
+
     let mut usdt_price = 50000.0;
     let mut usdc_price = 50025.0;
-    let mut rng = rand::thread_rng();
     
     loop {
+        let mut rng = rand::thread_rng(); // Moved inside the loop
         // 模拟价格波动，根据设定的波动率
         let volatility_factor = volatility / 100.0;
         let usdt_change = (rng.gen::<f64>() - 0.5) * usdt_price * volatility_factor;
