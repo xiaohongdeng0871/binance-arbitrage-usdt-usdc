@@ -11,7 +11,7 @@ use std::collections::VecDeque;
 /// 价格记录
 #[derive(Debug, Clone)]
 struct PriceRecord {
-    timestamp: DateTime<Utc>,
+    _timestamp: DateTime<Utc>,
     symbol: String,
     price: Decimal,
 }
@@ -45,7 +45,7 @@ impl AbnormalPriceController {
     /// 添加价格记录
     pub fn add_price(&self, symbol: &str, price: Decimal) {
         let record = PriceRecord {
-            timestamp: Utc::now(),
+            _timestamp: Utc::now(),
             symbol: symbol.to_string(),
             price,
         };
@@ -197,7 +197,7 @@ impl RiskController for AbnormalPriceController {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{QuoteCurrency, ArbitrageStatus};
+    use crate::models::QuoteCurrency;
     
     #[tokio::test]
     async fn test_abnormal_price_detection() {

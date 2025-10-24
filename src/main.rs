@@ -20,7 +20,7 @@ use tracing::{info, error, warn, debug, Level};
 use tracing_subscriber::FmtSubscriber;
 use std::time::Duration;
 use tokio::time::sleep;
-use rand::Rng;
+
 use rust_decimal::{Decimal,dec};
 use std::str::FromStr;
 use std::fs;
@@ -379,7 +379,7 @@ async fn main() -> Result<()> {
             }
             
             // 开始监控套利机会
-            info!("开始监控 {}-USDT/USDC 套利机会", self.base_asset);
+            info!("开始监控 {}-USDT/USDC 套利机会", args.base_asset);
             engine.monitor_opportunities().await?;
         },
         Command::Simulate { volatility, opportunity_probability, runtime, .. } => {
@@ -433,22 +433,21 @@ async fn simulate_price_movements(api: &MockBinanceApi, base_asset: &str, volati
     let mut usdc_price = 50025.0;
     
     loop {
-        let mut rng = rand::thread_rng(); // Moved inside the loop
-        // 模拟价格波动，根据设定的波动率
+        // 每次循环都创建新的随机数生成器，避免跨await持有非Send类型
         let volatility_factor = volatility / 100.0;
-        let usdt_change = (rng.gen::<f64>() - 0.5) * usdt_price * volatility_factor;
-        let usdc_change = (rng.gen::<f64>() - 0.5) * usdc_price * volatility_factor;
+        let usdt_change = (rand::random::<f64>() - 0.5) * usdt_price * volatility_factor;
+        let usdc_change = (rand::random::<f64>() - 0.5) * usdc_price * volatility_factor;
         
         usdt_price += usdt_change;
         usdc_price += usdc_change;
         
         // 有指定概率会创造套利机会
-        if rng.gen_range(0..100) < opportunity_probability {
+        if rand::random::<u32>() % 100 < opportunity_probability {
             // 随机创造USDT价格低于或高于USDC的情况
-            if rng.gen_bool(0.5) {
-                usdt_price = usdc_price - rng.gen::<f64>() * 50.0;
+            if rand::random::<bool>() {
+                usdt_price = usdc_price - rand::random::<f64>() * 50.0;
             } else {
-                usdt_price = usdc_price + rng.gen::<f64>() * 50.0;
+                usdt_price = usdc_price + rand::random::<f64>() * 50.0;
             }
         }
         

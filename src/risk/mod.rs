@@ -11,6 +11,8 @@ pub trait RiskController: Send + Sync {
     fn name(&self) -> &str;
     
     /// 控制器描述
+    /// 注意：此方法当前未被使用，但作为风控接口的一部分保留
+    #[allow(dead_code)]
     fn description(&self) -> &str;
     
     /// 检查套利机会是否可以执行
@@ -26,14 +28,14 @@ pub trait RiskController: Send + Sync {
 
 /// 风控管理器，集成多个风险控制组件
 pub struct RiskManager {
-    config: Arc<Config>,
+    _config: Arc<Config>,
     controllers: Vec<Box<dyn RiskController>>,
 }
 
 impl RiskManager {
     pub fn new(config: Config) -> Self {
         Self {
-            config: Arc::new(config),
+            _config: Arc::new(config),
             controllers: Vec::new(),
         }
     }
@@ -78,6 +80,8 @@ impl RiskManager {
     }
     
     /// 重置所有风控组件
+    /// 注意：此方法当前未被使用
+    #[allow(dead_code)]
     pub async fn reset_all(&self) -> Result<()> {
         for controller in &self.controllers {
             controller.reset().await?;

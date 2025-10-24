@@ -109,7 +109,7 @@ impl RiskController for TradingTimeWindowController {
 mod tests {
     use super::*;
     use crate::models::{ArbitrageOpportunity, QuoteCurrency};
-    use rust_decimal::prelude::*;
+
     use rust_decimal::dec;
 
     #[tokio::test]

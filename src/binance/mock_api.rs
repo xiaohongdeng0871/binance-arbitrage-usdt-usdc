@@ -6,7 +6,7 @@ use chrono::Utc;
 use rust_decimal::{Decimal,dec};
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
-use std::time::{SystemTime, UNIX_EPOCH};
+
 use log::{ info};
 
 /// 模拟币安API，用于测试和开发
@@ -48,13 +48,7 @@ impl MockBinanceApi {
         prices.insert(symbol.to_string(), price);
     }
     
-    /// 获取当前时间戳（毫秒）
-    fn get_timestamp(&self) -> u64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as u64
-    }
+
     
     /// 解析交易对，获取基础资产和报价资产
     fn parse_symbol(&self, symbol: &str) -> Result<(String, String)> {

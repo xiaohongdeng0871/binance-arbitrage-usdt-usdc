@@ -10,6 +10,8 @@ pub trait TradingStrategy: Send + Sync {
     fn name(&self) -> &str;
     
     /// 策略描述
+    /// 注意：此方法当前未被使用，但作为策略接口的一部分保留
+    #[allow(dead_code)]
     fn description(&self) -> &str;
     
     /// 分析市场数据，寻找套利机会

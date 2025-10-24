@@ -272,6 +272,8 @@ impl DatabaseManager {
     }
     
     /// 查询历史交易记录
+    /// 注意：此方法当前未被使用
+    #[allow(dead_code)]
     pub async fn get_trade_history(
         &self,
         asset: Option<&str>,
@@ -397,6 +399,7 @@ impl DatabaseManager {
 #[cfg(test)]
 mod tests {
     use std::ops::Add;
+    use chrono::Duration;
     use super::*;
     use crate::models::{ArbitrageStatus};
     use rust_decimal::dec;

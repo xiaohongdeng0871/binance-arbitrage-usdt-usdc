@@ -29,6 +29,8 @@ impl PairBlacklistController {
     }
     
     /// 添加一组基础资产到黑名单
+    /// 注意：此方法当前未被使用
+    #[allow(dead_code)]
     pub fn add_base_asset_to_blacklist(&self, base_asset: &str) {
         let usdt_pair = format!("{}USDT", base_asset);
         let usdc_pair = format!("{}USDC", base_asset);
@@ -41,6 +43,8 @@ impl PairBlacklistController {
     }
     
     /// 从黑名单中移除交易对
+    /// 注意：此方法当前未被使用
+    #[allow(dead_code)]
     pub fn remove_from_blacklist(&self, asset: &str, quote: &str) {
         let pair = format!("{}{}", asset, quote);
         let mut blacklist = self.blacklist.lock().unwrap();
@@ -50,6 +54,8 @@ impl PairBlacklistController {
     }
     
     /// 从黑名单中移除一组基础资产
+    /// 注意：此方法当前未被使用
+    #[allow(dead_code)]
     pub fn remove_base_asset_from_blacklist(&self, base_asset: &str) {
         let usdt_pair = format!("{}USDT", base_asset);
         let usdc_pair = format!("{}USDC", base_asset);
@@ -63,14 +69,11 @@ impl PairBlacklistController {
         }
     }
     
-    /// 检查交易对是否在黑名单中
-    fn is_blacklisted(&self, asset: &str, quote: &str) -> bool {
-        let pair = format!("{}{}", asset, quote);
-        let blacklist = self.blacklist.lock().unwrap();
-        blacklist.contains(&pair)
-    }
+
     
     /// 获取所有黑名单交易对
+    /// 注意：此方法当前未被使用
+    #[allow(dead_code)]
     pub fn get_blacklist(&self) -> Vec<String> {
         let blacklist = self.blacklist.lock().unwrap();
         blacklist.iter().cloned().collect()

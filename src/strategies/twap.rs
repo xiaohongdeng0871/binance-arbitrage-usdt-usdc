@@ -17,18 +17,15 @@ pub struct TimeWeightedAverageStrategy {
     config: Arc<Config>,
     /// 分割的订单数量
     slices: usize,
-    /// 每个分割订单之间的间隔（秒）
-    interval_seconds: u64,
     /// 价格历史记录
     price_history: Arc<Mutex<Vec<(DateTime<Utc>, Decimal, Decimal)>>>,
 }
 
 impl TimeWeightedAverageStrategy {
-    pub fn new(config: Config, slices: usize, interval_seconds: u64) -> Self {
+    pub fn new(config: Config, slices: usize, _interval_seconds: u64) -> Self {
         Self {
             config: Arc::new(config),
             slices,
-            interval_seconds,
             price_history: Arc::new(Mutex::new(Vec::new())),
         }
     }

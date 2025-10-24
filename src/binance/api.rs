@@ -14,6 +14,9 @@ type HmacSha256 = Hmac<Sha256>;
 
 #[async_trait]
 pub trait ExchangeApi {
+    /// 获取交易对信息
+    /// 注意：此方法当前未被使用，但作为API接口的一部分保留
+    #[allow(dead_code)]
     async fn get_symbol_info(&self, symbol: &str) -> Result<Symbol>;
     async fn get_price(&self, symbol: &str) -> Result<Price>;
     async fn get_order_book(&self, symbol: &str, limit: Option<u32>) -> Result<OrderBook>;

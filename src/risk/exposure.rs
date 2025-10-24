@@ -130,13 +130,15 @@ impl<T: ExchangeApi + Send + Sync + 'static> RiskController for ExposureControll
 
 #[cfg(test)]
 mod tests {
+    use rust_decimal::dec;
+    use crate::models::QuoteCurrency;
     use super::*;
     use crate::binance::MockBinanceApi;
     
     #[tokio::test]
     async fn test_exposure_control() {
         let api = MockBinanceApi::new();
-        let mut controller = ExposureController::new(api);
+        let mut controller = ExposureController::new(Arc::new(api));
         
         // 设置BTC的最大风险敞口为2个BTC
         controller.set_max_exposure("BTC", dec!(2));

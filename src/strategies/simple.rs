@@ -30,7 +30,7 @@ impl TradingStrategy for SimpleArbitrageStrategy {
     }
     
     fn description(&self) -> &str {
-        "当USDT和USDC交易对之间的价格差异超过设定阈值时，买入价格较低的一方，卖出价格较高的一方"
+        "当USDT和USDT交易对之间的价格差异超过设定阈值时，买入价格较低的一方，卖出价格较高的一方"
     }
     
     async fn find_opportunity(&self, base_asset: &str, usdt_price: &Price, usdc_price: &Price) -> Result<Option<ArbitrageOpportunity>> {
