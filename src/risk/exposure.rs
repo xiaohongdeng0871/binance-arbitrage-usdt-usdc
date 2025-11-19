@@ -143,11 +143,8 @@ mod tests {
         // 设置BTC的最大风险敞口为2个BTC
         controller.set_max_exposure("BTC", dec!(2));
         
-        // 模拟更新持仓
-        {
-            let mut positions = controller.current_positions.lock().unwrap();
-            positions.insert("BTC".to_string(), dec!(1.5));
-        }
+        // 模拟更新持仓为1.5 BTC
+        controller.api.update_balance("BTC", dec!(1.5));
         
         // 创建一个会超过风险敞口的套利机会
         let opportunity = ArbitrageOpportunity::new(
@@ -159,7 +156,7 @@ mod tests {
             dec!(50000),  // 交易1 BTC
         );
         
-        // 应该被拒绝
+        // 应该被拒绝 (当前1.5 + 交易1.0 = 2.5 > 限制2.0)
         let (valid, reason) = controller.check_opportunity(&opportunity).await.unwrap();
         assert!(!valid);
         assert!(reason.unwrap().contains("风险敞口将超过限制"));
@@ -174,7 +171,7 @@ mod tests {
             dec!(10000),  // 交易0.2 BTC
         );
         
-        // 应该通过
+        // 应该通过 (当前1.5 + 交易0.2 = 1.7 < 限制2.0)
         let (valid, _) = controller.check_opportunity(&opportunity).await.unwrap();
         assert!(valid);
     }

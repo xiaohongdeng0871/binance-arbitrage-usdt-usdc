@@ -3,7 +3,7 @@ use crate::binance::ExchangeApi;
 use crate::models::{ArbitrageOpportunity, Price, QuoteCurrency};
 use crate::config::Config;
 use anyhow::{Result, anyhow};
-use async_trait::async_trait;
+// 移除了未使用的 async_trait 导入
 use rust_decimal::{Decimal,dec};
 use std::sync::Arc;
 use log::{debug, info, warn};
@@ -11,7 +11,7 @@ use rust_decimal::prelude::*;
 
 /// 订单簿深度分析策略
 /// 通过分析订单簿深度来判断市场流动性和潜在的滑点，避免在流动性不足的市场中进行套利
-pub struct OrderBookDepthStrategy<T: ExchangeApi + Send + Sync> {
+pub struct OrderBookDepthStrategy<T: ExchangeApi + Send + Sync + 'static> {
     config: Arc<Config>,
     api: Arc<T>,
     /// 要分析的订单簿深度（价格档位数量）
@@ -100,17 +100,18 @@ impl<T: ExchangeApi + Send + Sync + 'static> OrderBookDepthStrategy<T> {
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl<T: ExchangeApi + Send + Sync + 'static> TradingStrategy for OrderBookDepthStrategy<T> {
     fn name(&self) -> &str {
-        "订单簿深度分析套利"
+        "OrderBookDepth"
     }
-    
-    fn description(&self) -> &str {
-        "通过分析订单簿深度来判断市场流动性和潜在的滑点，避免在流动性不足的市场中进行套利"
-    }
-    
-    async fn find_opportunity(&self, base_asset: &str, usdt_price: &Price, usdc_price: &Price) -> Result<Option<ArbitrageOpportunity>> {
+
+    async fn find_opportunity(
+        &self,
+        base_asset: &str,
+        usdt_price: &Price,
+        usdc_price: &Price,
+    ) -> Result<Option<ArbitrageOpportunity>> {
         let max_trade_amount = Decimal::from_f64(self.config.arbitrage_settings.max_trade_amount_usdt).unwrap();
         
         // 构造交易对名称

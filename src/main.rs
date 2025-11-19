@@ -26,6 +26,7 @@ use std::str::FromStr;
 use std::fs;
 use chrono::{Utc, Local, NaiveDate, TimeZone};
 use rust_decimal::prelude::FromPrimitive;
+use sqlx::mysql::MySqlPoolOptions;
 
 /// 币安 USDT-USDC 套利程序
 #[derive(Parser, Debug)]
@@ -164,29 +165,37 @@ async fn main() -> Result<()> {
     
     // 连接数据库（如果提供了连接字符串）
     let db_manager = if let Some(db_url) = &args.db_url {
-        match DatabaseManager::new(db_url).await {
-            Ok(db) => {
-                info!("成功连接到数据库");
-                Some(db)
-            },
-            Err(e) => {
-                error!("连接数据库失败: {}", e);
-                None
-            }
-        }
-    } else {
-        // 尝试从环境变量获取数据库连接字符串
-        if let Ok(db_url) = std::env::var("DATABASE_URL") {
-            match DatabaseManager::new(&db_url).await {
-                Ok(db) => {
-                    info!("成功连接到数据库 (使用环境变量DATABASE_URL)");
+        match MySqlPoolOptions::new()
+            .max_connections(5)
+            .connect(db_url)
+            .await {
+                Ok(pool) => {
+                    let db = DatabaseManager::new(pool);
+                    info!("成功连接到数据库");
                     Some(db)
                 },
                 Err(e) => {
-                    error!("连接数据库失败 (使用环境变量DATABASE_URL): {}", e);
+                    error!("连接数据库失败: {}", e);
                     None
                 }
             }
+    } else {
+        // 尝试从环境变量获取数据库连接字符串
+        if let Ok(db_url) = std::env::var("DATABASE_URL") {
+            match MySqlPoolOptions::new()
+                .max_connections(5)
+                .connect(&db_url)
+                .await {
+                    Ok(pool) => {
+                        let db = DatabaseManager::new(pool);
+                        info!("成功连接到数据库 (使用环境变量DATABASE_URL)");
+                        Some(db)
+                    },
+                    Err(e) => {
+                        error!("连接数据库失败 (使用环境变量DATABASE_URL): {}", e);
+                        None
+                    }
+                }
         } else {
             None
         }

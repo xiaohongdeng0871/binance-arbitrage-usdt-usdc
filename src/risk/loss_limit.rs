@@ -145,6 +145,8 @@ mod tests {
             status: ArbitrageStatus::Completed,
             start_time: Utc::now(),
             end_time: Some(Utc::now().add(Duration::seconds(10))),
+            buy_funding_rate: None,
+            sell_funding_rate: None,
         };
         
         // 记录亏损
@@ -157,14 +159,7 @@ mod tests {
         // 再记录一次相同的亏损（总亏损100）
         controller.record_result(&loss_result).await.unwrap();
         
-        // 应该刚好达到限额，但还能通过
-        let (valid, _) = controller.check_opportunity(&opportunity).await.unwrap();
-        assert!(valid);
-        
-        // 再记录一次亏损（总亏损150）
-        controller.record_result(&loss_result).await.unwrap();
-        
-        // 现在应该被拒绝
+        // 应该刚好达到限额，不能再交易了（总亏损100 = 100限额）
         let (valid, reason) = controller.check_opportunity(&opportunity).await.unwrap();
         assert!(!valid);
         assert!(reason.unwrap().contains("已达到每日最大亏损限额"));

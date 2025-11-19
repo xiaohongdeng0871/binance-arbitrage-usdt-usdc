@@ -1,7 +1,7 @@
 use crate::binance::ExchangeApi;
 use crate::config::{Config, StrategyType, RiskControllerType};
-use crate::models::{ArbitrageOpportunity, ArbitrageResult, ArbitrageStatus, OrderStatus, QuoteCurrency, Side};
-use crate::strategies::{TradingStrategy, SimpleArbitrageStrategy, TimeWeightedAverageStrategy, OrderBookDepthStrategy, SlippageControlStrategy, TrendFollowingStrategy};
+use crate::models::{ArbitrageOpportunity, ArbitrageResult, ArbitrageStatus, OrderStatus, QuoteCurrency, Side, FundingRate};
+use crate::strategies::{TradingStrategy, SimpleArbitrageStrategy, TimeWeightedAverageStrategy, OrderBookDepthStrategy, SlippageControlStrategy, TrendFollowingStrategy, FundingRateArbitrageStrategy};
 use crate::risk::{RiskManager, DailyLossLimitController, AbnormalPriceController, ExposureController, TradingTimeWindowController, TradingFrequencyController, PairBlacklistController};
 use crate::db::DatabaseManager;
 use anyhow::{anyhow, Result};
@@ -25,9 +25,6 @@ pub struct ArbitrageEngine<T: ExchangeApi + Send + Sync + 'static> {
 
 impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
     pub fn new(api: T, config: Config, base_asset: &str) -> Result<Self> {
-        // ... existing code ...
-        
-        // 保留原有的实现代码...
         let api_arc = Arc::new(api);
         
         // 初始化交易策略
@@ -78,6 +75,14 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
                         Decimal::from_f64(settings.trend_threshold).unwrap_or(dec!(1.0)),
                     )));
                 },
+                StrategyType::FundingRateArbitrage => {
+                    info!("启用资金费率套利策略");
+                    let settings = &config.strategy_settings.funding_rate;
+                    strategies.push(Box::new(FundingRateArbitrageStrategy::new(
+                        config.clone(),
+                        Decimal::from_f64(settings.min_funding_rate_diff).unwrap_or(dec!(0.01)),
+                    )));
+                },
             }
         }
         
@@ -99,8 +104,6 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
                         Decimal::from_f64(config.risk_settings.daily_loss_limit.max_daily_loss).unwrap_or(dec!(50.0))
                     ));
                 },
-                // ... 其他风控初始化代码 ...
-                // 保留原有的风控初始化代码...
                 RiskControllerType::AbnormalPrice => {
                     info!("启用异常价格保护风控");
                     let settings = &config.risk_settings.abnormal_price;
@@ -256,6 +259,8 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
                                 status: ArbitrageStatus::Failed,
                                 start_time: opportunity.timestamp,
                                 end_time: Some(Utc::now()),
+                                buy_funding_rate: opportunity.buy_funding_rate,
+                                sell_funding_rate: opportunity.sell_funding_rate,
                             };
                             
                             self.risk_manager.record_result(&failed_result).await?;
@@ -276,28 +281,49 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
         }
     }
     
-    // ... existing code ...
-    // 保留原有的其他方法实现...
-
     /// 使用所有启用的策略寻找最佳套利机会
     async fn find_best_arbitrage_opportunity(&self) -> Result<ArbitrageOpportunity> {
         // 构造交易对名称
-        let usdt_symbol = format!("{}{}", self.base_asset, "USDT");
-        let usdc_symbol = format!("{}{}", self.base_asset, "USDC");
+        let spot_symbol = format!("{}{}", self.base_asset, "USDT");
+        let futures_symbol = format!("{}{}", self.base_asset, "USDT"); // 合约交易对
         
-        // 获取价格
-        let usdt_price = self.api.get_price(&usdt_symbol).await?;
-        let usdc_price = self.api.get_price(&usdc_symbol).await?;
+        // 获取现货价格
+        let spot_price = self.api.get_spot_price(&spot_symbol).await?;
         
-        debug!("{} 价格: {}", usdt_symbol, usdt_price.price);
-        debug!("{} 价格: {}", usdc_symbol, usdc_price.price);
+        // 获取合约价格
+        let futures_price = self.api.get_futures_price(&futures_symbol).await?;
+        
+        debug!("{} 现货价格: {}", spot_symbol, spot_price.price);
+        debug!("{} 合约价格: {}", futures_symbol, futures_price.price);
+        
+        // 获取资金费率
+        let spot_funding_rate = self.api.get_funding_rate(&spot_symbol).await.unwrap_or_else(|_| {
+            warn!("无法获取 {} 资金费率", spot_symbol);
+            FundingRate {
+                symbol: spot_symbol.clone(),
+                funding_rate: Decimal::ZERO,
+                timestamp: Utc::now(),
+            }
+        });
+        
+        let futures_funding_rate = self.api.get_funding_rate(&futures_symbol).await.unwrap_or_else(|_| {
+            warn!("无法获取 {} 资金费率", futures_symbol);
+            FundingRate {
+                symbol: futures_symbol.clone(),
+                funding_rate: Decimal::ZERO,
+                timestamp: Utc::now(),
+            }
+        });
+        
+        debug!("{} 现货资金费率: {}", spot_symbol, spot_funding_rate.funding_rate);
+        debug!("{} 合约资金费率: {}", futures_symbol, futures_funding_rate.funding_rate);
         
         let mut best_opportunity: Option<ArbitrageOpportunity> = None;
         let mut best_profit = Decimal::ZERO;
         
         // 使用每个策略寻找机会
         for strategy in &self.strategies {
-            match strategy.find_opportunity(&self.base_asset, &usdt_price, &usdc_price).await {
+            match strategy.find_opportunity(&self.base_asset, &spot_price, &futures_price).await {
                 Ok(Some(opportunity)) => {
                     // 验证是否符合策略要求
                     match strategy.validate_opportunity(&opportunity).await {
@@ -335,36 +361,36 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
         if best_opportunity.is_none() {
             let max_trade_amount = Decimal::from_f64(self.config.arbitrage_settings.max_trade_amount_usdt).unwrap();
             
-            let opportunity = if usdt_price.price < usdc_price.price {
-                // USDT买入，USDC卖出
-                ArbitrageOpportunity::new(
-                    &self.base_asset,
-                    QuoteCurrency::USDT,
-                    QuoteCurrency::USDC,
-                    usdt_price.price,
-                    usdc_price.price,
-                    max_trade_amount,
-                )
-            } else {
-                // USDC买入，USDT卖出
-                ArbitrageOpportunity::new(
-                    &self.base_asset,
-                    QuoteCurrency::USDC,
-                    QuoteCurrency::USDT,
-                    usdc_price.price,
-                    usdt_price.price,
-                    max_trade_amount,
-                )
-            };
+            let opportunity = ArbitrageOpportunity::new_with_funding_rates(
+                &self.base_asset,
+                QuoteCurrency::USDT,
+                QuoteCurrency::USDT,
+                spot_price.price,
+                futures_price.price,
+                max_trade_amount,
+                spot_funding_rate.funding_rate,
+                futures_funding_rate.funding_rate,
+            );
             
             return Ok(opportunity);
         }
         
-        Ok(best_opportunity.unwrap())
+        // 为找到的最佳机会添加资金费率信息
+        let mut opportunity = best_opportunity.unwrap();
+        opportunity.buy_funding_rate = Some(spot_funding_rate.funding_rate);
+        opportunity.sell_funding_rate = Some(futures_funding_rate.funding_rate);
+        
+        Ok(opportunity)
     }
     
     /// 执行套利交易
     async fn execute_arbitrage(&self, opportunity: &ArbitrageOpportunity) -> Result<ArbitrageResult> {
+        // 对于资金费率套利，需要考虑现货和合约价格差
+        // 如果是资金费率套利策略，执行特殊的套利逻辑
+        if self.strategies.iter().any(|s| s.name() == "FundingRateArbitrage") {
+            return self.execute_funding_rate_arbitrage(opportunity).await;
+        }
+        
         // 计算交易量
         let trade_amount_quote = opportunity.max_trade_amount;
         let trade_amount_base = trade_amount_quote / opportunity.buy_price;
@@ -383,20 +409,29 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
             status: ArbitrageStatus::Executing,
             start_time: Utc::now(),
             end_time: None,
+            buy_funding_rate: opportunity.buy_funding_rate,
+            sell_funding_rate: opportunity.sell_funding_rate,
         };
         
         // 构造交易对
-        let buy_symbol = format!("{}{}", opportunity.base_asset, opportunity.buy_quote);
-        let sell_symbol = format!("{}{}", opportunity.base_asset, opportunity.sell_quote);
+        let spot_symbol = format!("{}{}", opportunity.base_asset, "USDT");
+        let futures_symbol = format!("{}{}", opportunity.base_asset, "USDT");
         
-        info!("执行套利交易 - 买入: {} @ {}, 卖出: {} @ {}, 数量: {}", 
-            buy_symbol, opportunity.buy_price,
-            sell_symbol, opportunity.sell_price,
+        info!("执行套利交易 - 现货: {} @ {}, 合约: {} @ {}, 数量: {}", 
+            spot_symbol, opportunity.buy_price,
+            futures_symbol, opportunity.sell_price,
             trade_amount_base
         );
         
+        if let (Some(spot_funding_rate), Some(futures_funding_rate)) = (opportunity.buy_funding_rate, opportunity.sell_funding_rate) {
+            info!("资金费率 - 现货: {} ({}), 合约: {} ({})", 
+                spot_symbol, spot_funding_rate,
+                futures_symbol, futures_funding_rate
+            );
+        }
+        
         // 执行买入订单
-        let buy_order = match self.api.place_order(&buy_symbol, Side::Buy, trade_amount_base, None).await {
+        let buy_order = match self.api.place_order(&spot_symbol, Side::Buy, trade_amount_base, None).await {
             Ok(order) => {
                 info!("买入订单已提交: ID={}, 状态={:?}", order.order_id, order.status);
                 result.buy_order_id = Some(order.order_id);
@@ -417,13 +452,13 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
             }
             
             sleep(Duration::from_millis(1000)).await;
-            buy_order_status = self.api.get_order_status(&buy_symbol, buy_order.order_id).await?;
+            buy_order_status = self.api.get_order_status(&spot_symbol, buy_order.order_id).await?;
             info!("买入订单状态: {:?}", buy_order_status.status);
         }
         
         if buy_order_status.status != OrderStatus::Filled {
             info!("取消买入订单...");
-            self.api.cancel_order(&buy_symbol, buy_order.order_id).await?;
+            self.api.cancel_order(&spot_symbol, buy_order.order_id).await?;
             result.status = ArbitrageStatus::Failed;
             return Err(anyhow!("买入订单未在预期时间内完成"));
         }
@@ -431,7 +466,7 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
         result.status = ArbitrageStatus::BuyOrderFilled;
         
         // 执行卖出订单
-        let sell_order = match self.api.place_order(&sell_symbol, Side::Sell, trade_amount_base, None).await {
+        let sell_order = match self.api.place_order(&futures_symbol, Side::Sell, trade_amount_base, None).await {
             Ok(order) => {
                 info!("卖出订单已提交: ID={}, 状态={:?}", order.order_id, order.status);
                 result.sell_order_id = Some(order.order_id);
@@ -452,18 +487,19 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
             }
             
             sleep(Duration::from_millis(1000)).await;
-            sell_order_status = self.api.get_order_status(&sell_symbol, sell_order.order_id).await?;
+            sell_order_status = self.api.get_order_status(&futures_symbol, sell_order.order_id).await?;
             info!("卖出订单状态: {:?}", sell_order_status.status);
         }
         
         if sell_order_status.status != OrderStatus::Filled {
             info!("取消卖出订单...");
-            self.api.cancel_order(&sell_symbol, sell_order.order_id).await?;
+            self.api.cancel_order(&futures_symbol, sell_order.order_id).await?;
             result.status = ArbitrageStatus::Failed;
             return Err(anyhow!("卖出订单未在预期时间内完成"));
         }
         
         result.status = ArbitrageStatus::Completed;
+        result.end_time = Some(Utc::now());
         
         // 计算实际利润
         let buy_total = trade_amount_base * buy_order_status.price;
@@ -474,5 +510,254 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
         
         info!("套利交易完成! 利润: {}", profit);
         Ok(result)
+    }
+    
+    /// 执行资金费率套利交易（现货和合约对冲）
+    async fn execute_funding_rate_arbitrage(&self, opportunity: &ArbitrageOpportunity) -> Result<ArbitrageResult> {
+        info!("执行资金费率套利交易，现货和合约对冲");
+        
+        // 计算交易量
+        let trade_amount_quote = opportunity.max_trade_amount;
+        let trade_amount_base = trade_amount_quote / opportunity.buy_price;
+        
+        let mut result = ArbitrageResult {
+            base_asset: opportunity.base_asset.clone(),
+            buy_quote: opportunity.buy_quote.to_string(),
+            sell_quote: opportunity.sell_quote.to_string(),
+            buy_price: opportunity.buy_price,
+            sell_price: opportunity.sell_price,
+            trade_amount: trade_amount_base,
+            profit: Decimal::ZERO,
+            profit_percentage: opportunity.profit_percentage,
+            buy_order_id: None,
+            sell_order_id: None,
+            status: ArbitrageStatus::Executing,
+            start_time: Utc::now(),
+            end_time: None,
+            buy_funding_rate: opportunity.buy_funding_rate,
+            sell_funding_rate: opportunity.sell_funding_rate,
+        };
+        
+        // 构造交易对
+        let spot_symbol = format!("{}{}", opportunity.base_asset, "USDT");
+        let futures_symbol = format!("{}{}", opportunity.base_asset, "USDT");
+        
+        // 获取现货和合约价格用于价差分析
+        let spot_price = self.api.get_spot_price(&spot_symbol).await.unwrap_or_else(|_| {
+            warn!("无法获取 {} 现货价格", spot_symbol);
+            crate::models::Price {
+                symbol: spot_symbol.clone(),
+                price: opportunity.buy_price,
+                timestamp: Utc::now(),
+            }
+        });
+        
+        let futures_price = self.api.get_futures_price(&futures_symbol).await.unwrap_or_else(|_| {
+            warn!("无法获取 {} 合约价格", futures_symbol);
+            crate::models::Price {
+                symbol: futures_symbol.clone(),
+                price: opportunity.sell_price,
+                timestamp: Utc::now(),
+            }
+        });
+        
+        // 计算现货和合约价格差
+        let spot_futures_diff = (spot_price.price - futures_price.price).abs();
+        let spot_futures_diff_pct = spot_futures_diff / spot_price.price * Decimal::from(100);
+        
+        info!("{} 现货价格: {}, 合约价格: {}, 价差: {} ({}%)", 
+            spot_symbol, spot_price.price, futures_price.price, spot_futures_diff, spot_futures_diff_pct);
+        
+        // 检查价差是否在可接受范围内
+        if spot_futures_diff_pct > Decimal::from(1) { // 1%作为最大可接受价差
+            result.status = ArbitrageStatus::Failed;
+            return Err(anyhow!("现货和合约价格差过大({}%)，放弃套利", spot_futures_diff_pct));
+        }
+        
+        // 确定资金费率方向
+        let (spot_funding_rate, futures_funding_rate) = match (opportunity.buy_funding_rate, opportunity.sell_funding_rate) {
+            (Some(spot_rate), Some(futures_rate)) => (spot_rate, futures_rate),
+            _ => {
+                result.status = ArbitrageStatus::Failed;
+                return Err(anyhow!("缺少资金费率信息"));
+            }
+        };
+        
+        // 根据资金费率方向决定交易方向
+        // 如果合约资金费率 > 现货资金费率，应该在现货买入，在合约卖出
+        // 如果合约资金费率 < 现货资金费率，应该在现货卖出，在合约买入
+        let funding_rate_diff = futures_funding_rate - spot_funding_rate;
+        
+        info!("资金费率差异: {} - {} = {}", futures_funding_rate, spot_funding_rate, funding_rate_diff);
+        
+        if funding_rate_diff > Decimal::ZERO {
+            // 合约资金费率更高，应该在现货买入，在合约卖出（正资金费率套利）
+            info!("资金费率方向: 在现货买入，在合约卖出");
+            
+            // 执行现货买入订单
+            let spot_buy_order = match self.api.place_order(&spot_symbol, Side::Buy, trade_amount_base, None).await {
+                Ok(order) => {
+                    info!("现货买入订单已提交: ID={}, 状态={:?}", order.order_id, order.status);
+                    result.buy_order_id = Some(order.order_id);
+                    result.status = ArbitrageStatus::BuyOrderPlaced;
+                    order
+                },
+                Err(e) => {
+                    result.status = ArbitrageStatus::Failed;
+                    return Err(anyhow!("现货买入订单失败: {}", e));
+                }
+            };
+            
+            // 等待现货买入订单完成
+            let mut spot_buy_order_status = spot_buy_order.clone();
+            for _ in 0..10 {
+                if spot_buy_order_status.status == OrderStatus::Filled {
+                    break;
+                }
+                
+                sleep(Duration::from_millis(1000)).await;
+                spot_buy_order_status = self.api.get_order_status(&spot_symbol, spot_buy_order.order_id).await?;
+                info!("现货买入订单状态: {:?}", spot_buy_order_status.status);
+            }
+            
+            if spot_buy_order_status.status != OrderStatus::Filled {
+                info!("取消现货买入订单...");
+                self.api.cancel_order(&spot_symbol, spot_buy_order.order_id).await?;
+                result.status = ArbitrageStatus::Failed;
+                return Err(anyhow!("现货买入订单未在预期时间内完成"));
+            }
+            
+            result.status = ArbitrageStatus::BuyOrderFilled;
+            
+            // 执行合约卖出订单
+            let futures_sell_order = match self.api.place_futures_order(&futures_symbol, Side::Sell, trade_amount_base, None).await {
+                Ok(order) => {
+                    info!("合约卖出订单已提交: ID={}, 状态={:?}", order.order_id, order.status);
+                    result.sell_order_id = Some(order.order_id);
+                    result.status = ArbitrageStatus::SellOrderPlaced;
+                    order
+                },
+                Err(e) => {
+                    result.status = ArbitrageStatus::Failed;
+                    return Err(anyhow!("合约卖出订单失败: {}", e));
+                }
+            };
+            
+            // 等待合约卖出订单完成
+            let mut futures_sell_order_status = futures_sell_order.clone();
+            for _ in 0..10 {
+                if futures_sell_order_status.status == OrderStatus::Filled {
+                    break;
+                }
+                
+                sleep(Duration::from_millis(1000)).await;
+                futures_sell_order_status = self.api.get_futures_order_status(&futures_symbol, futures_sell_order.order_id).await?;
+                info!("合约卖出订单状态: {:?}", futures_sell_order_status.status);
+            }
+            
+            if futures_sell_order_status.status != OrderStatus::Filled {
+                info!("取消合约卖出订单...");
+                self.api.cancel_futures_order(&futures_symbol, futures_sell_order.order_id).await?;
+                result.status = ArbitrageStatus::Failed;
+                return Err(anyhow!("合约卖出订单未在预期时间内完成"));
+            }
+            
+            result.status = ArbitrageStatus::Completed;
+            result.end_time = Some(Utc::now());
+            
+            // 计算实际利润（现货买入价格和合约卖出价格）
+            let spot_buy_total = trade_amount_base * spot_buy_order_status.price;
+            let futures_sell_total = trade_amount_base * futures_sell_order_status.price;
+            let profit = futures_sell_total - spot_buy_total;
+            
+            result.profit = profit;
+            
+            info!("资金费率套利交易完成! 利润: {}", profit);
+            Ok(result)
+        } else {
+            // 合约资金费率更低，应该在现货卖出，在合约买入（负资金费率套利）
+            info!("资金费率方向: 在现货卖出，在合约买入");
+            
+            // 执行现货卖出订单
+            let spot_sell_order = match self.api.place_order(&spot_symbol, Side::Sell, trade_amount_base, None).await {
+                Ok(order) => {
+                    info!("现货卖出订单已提交: ID={}, 状态={:?}", order.order_id, order.status);
+                    result.sell_order_id = Some(order.order_id);
+                    result.status = ArbitrageStatus::SellOrderPlaced;
+                    order
+                },
+                Err(e) => {
+                    result.status = ArbitrageStatus::Failed;
+                    return Err(anyhow!("现货卖出订单失败: {}", e));
+                }
+            };
+            
+            // 等待现货卖出订单完成
+            let mut spot_sell_order_status = spot_sell_order.clone();
+            for _ in 0..10 {
+                if spot_sell_order_status.status == OrderStatus::Filled {
+                    break;
+                }
+                
+                sleep(Duration::from_millis(1000)).await;
+                spot_sell_order_status = self.api.get_order_status(&spot_symbol, spot_sell_order.order_id).await?;
+                info!("现货卖出订单状态: {:?}", spot_sell_order_status.status);
+            }
+            
+            if spot_sell_order_status.status != OrderStatus::Filled {
+                info!("取消现货卖出订单...");
+                self.api.cancel_order(&spot_symbol, spot_sell_order.order_id).await?;
+                result.status = ArbitrageStatus::Failed;
+                return Err(anyhow!("现货卖出订单未在预期时间内完成"));
+            }
+            
+            result.status = ArbitrageStatus::SellOrderFilled;
+            
+            // 执行合约买入订单
+            let futures_buy_order = match self.api.place_futures_order(&futures_symbol, Side::Buy, trade_amount_base, None).await {
+                Ok(order) => {
+                    info!("合约买入订单已提交: ID={}, 状态={:?}", order.order_id, order.status);
+                    result.buy_order_id = Some(order.order_id);
+                    result.status = ArbitrageStatus::BuyOrderPlaced;
+                    order
+                },
+                Err(e) => {
+                    result.status = ArbitrageStatus::Failed;
+                    return Err(anyhow!("合约买入订单失败: {}", e));
+                }
+            };
+            
+            // 等待合约买入订单完成
+            let mut futures_buy_order_status = futures_buy_order.clone();
+            for _ in 0..10 {
+                if futures_buy_order_status.status == OrderStatus::Filled {
+                    break;
+                }
+                
+                sleep(Duration::from_millis(1000)).await;
+                futures_buy_order_status = self.api.get_futures_order_status(&futures_symbol, futures_buy_order.order_id).await?;
+                info!("合约买入订单状态: {:?}", futures_buy_order_status.status);
+            }
+            
+            if futures_buy_order_status.status != OrderStatus::Filled {
+                info!("取消合约买入订单...");
+                self.api.cancel_futures_order(&futures_symbol, futures_buy_order.order_id).await?;
+                result.status = ArbitrageStatus::Failed;
+                return Err(anyhow!("合约买入订单未在预期时间内完成"));
+            }
+            
+            result.status = ArbitrageStatus::Completed;
+            result.end_time = Some(Utc::now());
+            
+            // 计算实际利润（现货卖出价格和合约买入价格）
+            let spot_sell_total = trade_amount_base * spot_sell_order_status.price;
+            let futures_buy_total = trade_amount_base * futures_buy_order_status.price;
+            let profit = spot_sell_total - futures_buy_total;
+            
+            result.profit = profit;
+            
+            info!("资金费率套利交易完成! 利润: {}", profit);
+            Ok(result)
+        }
     }
 }

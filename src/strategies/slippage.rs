@@ -139,14 +139,15 @@ impl SlippageControlStrategy {
 #[async_trait]
 impl TradingStrategy for SlippageControlStrategy {
     fn name(&self) -> &str {
-        "滑点控制套利策略"
+        "SlippageControl"
     }
-    
-    fn description(&self) -> &str {
-        "通过控制下单时的价格滑点，在波动较大的市场中保护套利交易"
-    }
-    
-    async fn find_opportunity(&self, base_asset: &str, usdt_price: &Price, usdc_price: &Price) -> Result<Option<ArbitrageOpportunity>> {
+
+    async fn find_opportunity(
+        &self,
+        base_asset: &str,
+        usdt_price: &Price,
+        usdc_price: &Price,
+    ) -> Result<Option<ArbitrageOpportunity>> {
         // 记录价格历史
         self.record_price(usdt_price.price, usdc_price.price);
         
@@ -191,7 +192,7 @@ impl TradingStrategy for SlippageControlStrategy {
         
         Ok(Some(opportunity))
     }
-    
+
     async fn validate_opportunity(&self, opportunity: &ArbitrageOpportunity) -> Result<bool> {
         let min_profit = Decimal::from_f64(self.config.arbitrage_settings.min_profit_percentage).unwrap();
         

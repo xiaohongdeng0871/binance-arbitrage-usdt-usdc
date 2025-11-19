@@ -78,14 +78,15 @@ impl TimeWeightedAverageStrategy {
 #[async_trait]
 impl TradingStrategy for TimeWeightedAverageStrategy {
     fn name(&self) -> &str {
-        "时间加权平均价格(TWAP)套利"
+        "TimeWeightedAverage"
     }
-    
-    fn description(&self) -> &str {
-        "将套利订单分割成多个小订单在一段时间内执行，减少市场冲击并降低风险"
-    }
-    
-    async fn find_opportunity(&self, base_asset: &str, usdt_price: &Price, usdc_price: &Price) -> Result<Option<ArbitrageOpportunity>> {
+
+    async fn find_opportunity(
+        &self,
+        base_asset: &str,
+        usdt_price: &Price,
+        usdc_price: &Price,
+    ) -> Result<Option<ArbitrageOpportunity>> {
         // 记录最新价格
         self.record_price(usdt_price.price, usdc_price.price);
         
@@ -144,7 +145,7 @@ impl TradingStrategy for TimeWeightedAverageStrategy {
         
         Ok(Some(opportunity))
     }
-    
+
     async fn validate_opportunity(&self, opportunity: &ArbitrageOpportunity) -> Result<bool> {
         // 验证利润是否超过最小阈值
         let min_profit = Decimal::from_f64(self.config.arbitrage_settings.min_profit_percentage).unwrap();

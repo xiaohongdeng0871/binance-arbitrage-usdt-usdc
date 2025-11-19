@@ -165,14 +165,15 @@ impl TrendFollowingStrategy {
 #[async_trait]
 impl TradingStrategy for TrendFollowingStrategy {
     fn name(&self) -> &str {
-        "趋势跟踪套利策略"
+        "TrendFollowing"
     }
-    
-    fn description(&self) -> &str {
-        "分析短期价格趋势，避免在价格波动的不利方向进行套利"
-    }
-    
-    async fn find_opportunity(&self, base_asset: &str, usdt_price: &Price, usdc_price: &Price) -> Result<Option<ArbitrageOpportunity>> {
+
+    async fn find_opportunity(
+        &self,
+        base_asset: &str,
+        usdt_price: &Price,
+        usdc_price: &Price,
+    ) -> Result<Option<ArbitrageOpportunity>> {
         // 记录价格历史
         self.record_price(usdt_price.price, usdc_price.price);
         

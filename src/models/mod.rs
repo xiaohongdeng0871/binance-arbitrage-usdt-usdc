@@ -75,6 +75,9 @@ pub struct ArbitrageOpportunity {
     pub profit_percentage: Decimal,         // 利润百分比
     pub max_trade_amount: Decimal,          // 最大交易量
     pub timestamp: DateTime<Utc>,           // 时间戳
+    // 添加资金费率相关字段
+    pub buy_funding_rate: Option<Decimal>,  // 买入交易对的资金费率
+    pub sell_funding_rate: Option<Decimal>, // 卖出交易对的资金费率
 }
 
 impl ArbitrageOpportunity {
@@ -103,7 +106,35 @@ impl ArbitrageOpportunity {
             profit_percentage,
             max_trade_amount,
             timestamp: Utc::now(),
+            buy_funding_rate: None,
+            sell_funding_rate: None,
         }
+    }
+    
+    // 创建包含资金费率的套利机会
+    pub fn new_with_funding_rates(
+        base_asset: &str,
+        buy_quote: QuoteCurrency,
+        sell_quote: QuoteCurrency,
+        buy_price: Decimal,
+        sell_price: Decimal,
+        max_trade_amount: Decimal,
+        buy_funding_rate: Decimal,
+        sell_funding_rate: Decimal,
+    ) -> Self {
+        let mut opportunity = Self::new(
+            base_asset,
+            buy_quote,
+            sell_quote,
+            buy_price,
+            sell_price,
+            max_trade_amount,
+        );
+        
+        opportunity.buy_funding_rate = Some(buy_funding_rate);
+        opportunity.sell_funding_rate = Some(sell_funding_rate);
+        
+        opportunity
     }
 }
 
@@ -130,6 +161,14 @@ pub enum OrderStatus {
     Expired,
 }
 
+/// 资金费率信息
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FundingRate {
+    pub symbol: String,
+    pub funding_rate: Decimal,
+    pub timestamp: DateTime<Utc>,
+}
+
 /// 套利结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArbitrageResult {
@@ -146,6 +185,9 @@ pub struct ArbitrageResult {
     pub status: ArbitrageStatus,
     pub start_time: DateTime<Utc>,
     pub end_time: Option<DateTime<Utc>>,
+    // 添加资金费率相关字段
+    pub buy_funding_rate: Option<Decimal>,
+    pub sell_funding_rate: Option<Decimal>,
 }
 
 /// 套利状态
@@ -159,4 +201,19 @@ pub enum ArbitrageStatus {
     SellOrderFilled,
     Completed,
     Failed,
+}
+
+impl fmt::Display for ArbitrageStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ArbitrageStatus::Identified => write!(f, "Identified"),
+            ArbitrageStatus::Executing => write!(f, "Executing"),
+            ArbitrageStatus::BuyOrderPlaced => write!(f, "BuyOrderPlaced"),
+            ArbitrageStatus::BuyOrderFilled => write!(f, "BuyOrderFilled"),
+            ArbitrageStatus::SellOrderPlaced => write!(f, "SellOrderPlaced"),
+            ArbitrageStatus::SellOrderFilled => write!(f, "SellOrderFilled"),
+            ArbitrageStatus::Completed => write!(f, "Completed"),
+            ArbitrageStatus::Failed => write!(f, "Failed"),
+        }
+    }
 }

@@ -177,7 +177,9 @@ mod tests {
             sell_order_id: Some(2),
             status: ArbitrageStatus::Completed,
             start_time: Utc::now(),
-            end_time: Some(Utc::now().add(Duration::seconds(29)))
+            end_time: Some(Utc::now().add(Duration::seconds(29))),
+            buy_funding_rate: None,
+            sell_funding_rate: None,
         };
         
         controller.record_result(&result).await.unwrap();

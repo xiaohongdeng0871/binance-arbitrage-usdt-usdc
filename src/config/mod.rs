@@ -18,6 +18,8 @@ pub enum StrategyType {
     SlippageControl,
     /// 趋势跟踪
     TrendFollowing,
+    /// 资金费率套利
+    FundingRateArbitrage,
 }
 
 /// 风控组件类型
@@ -73,6 +75,9 @@ pub struct StrategySettings {
     
     /// 趋势跟踪策略设置
     pub trend_following: TrendFollowingStrategySettings,
+    
+    /// 资金费率套利策略设置
+    pub funding_rate: FundingRateStrategySettings,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -185,6 +190,12 @@ pub struct PairBlacklistSettings {
     pub blacklisted_pairs: Vec<String>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FundingRateStrategySettings {
+    /// 最小资金费率差异阈值（百分比）
+    pub min_funding_rate_diff: f64,
+}
+
 impl Default for ArbitrageSettings {
     fn default() -> Self {
         Self {
@@ -218,6 +229,9 @@ impl Default for StrategySettings {
                 short_window: 10,
                 long_window: 30,
                 trend_threshold: 1.0,
+            },
+            funding_rate: FundingRateStrategySettings {
+                min_funding_rate_diff: 0.01, // 0.01%
             },
         }
     }

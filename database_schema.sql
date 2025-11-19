@@ -11,6 +11,8 @@ CREATE TABLE `arbitrage_history` (
     `profit_percentage` DECIMAL(10, 4) NOT NULL COMMENT '利润率百分比',
     `buy_order_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '买入订单ID',
     `sell_order_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '卖出订单ID',
+    `buy_funding_rate` DECIMAL(20, 8) DEFAULT NULL COMMENT '买入交易对资金费率',
+    `sell_funding_rate` DECIMAL(20, 8) DEFAULT NULL COMMENT '卖出交易对资金费率',
     `status` VARCHAR(20) NOT NULL COMMENT '套利状态',
     `start_time` DATETIME NOT NULL COMMENT '开始时间',
     `end_time` DATETIME NOT NULL COMMENT '结束时间',
