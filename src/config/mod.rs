@@ -4,6 +4,7 @@ use std::env;
 use std::fs::File;
 use std::io::Read;
 use anyhow::{Context, Result};
+use crate::exchanges::exchange::Exchange;
 
 /// 交易策略类型
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -287,6 +288,59 @@ impl Config {
             .context("BINANCE_API_SECRET not set in environment or .env file")?;
         let base_url = env::var("BINANCE_API_URL")
             .unwrap_or_else(|_| "https://api.binance.com".to_string());
+            
+        Ok(Config {
+            api_key,
+            api_secret,
+            base_url,
+            arbitrage_settings: ArbitrageSettings::default(),
+            strategy_settings: StrategySettings::default(),
+            risk_settings: RiskSettings::default(),
+        })
+    }
+    
+    pub fn new_with_exchange(exchange: Exchange) -> Result<Self> {
+        dotenv().ok();
+        
+        let (api_key_var, api_secret_var, base_url_var, default_url) = match exchange {
+            Exchange::Binance => (
+                "BINANCE_API_KEY",
+                "BINANCE_API_SECRET", 
+                "BINANCE_API_URL",
+                "https://api.binance.com"
+            ),
+            Exchange::Okx => (
+                "OKX_API_KEY",
+                "OKX_API_SECRET",
+                "OKX_API_URL",
+                "https://www.okx.com"
+            ),
+            Exchange::GateIo => (
+                "GATEIO_API_KEY",
+                "GATEIO_API_SECRET",
+                "GATEIO_API_URL",
+                "https://api.gateio.ws"
+            ),
+            Exchange::Bitget => (
+                "BITGET_API_KEY",
+                "BITGET_API_SECRET",
+                "BITGET_API_URL",
+                "https://api.bitget.com"
+            ),
+            Exchange::Kucoin => (
+                "KUCOIN_API_KEY",
+                "KUCOIN_API_SECRET",
+                "KUCOIN_API_URL",
+                "https://api.kucoin.com"
+            ),
+        };
+        
+        let api_key = env::var(api_key_var)
+            .with_context(|| format!("{} not set in environment or .env file", api_key_var))?;
+        let api_secret = env::var(api_secret_var)
+            .with_context(|| format!("{} not set in environment or .env file", api_secret_var))?;
+        let base_url = env::var(base_url_var)
+            .unwrap_or_else(|_| default_url.to_string());
             
         Ok(Config {
             api_key,

@@ -1,9 +1,8 @@
 use super::TradingStrategy;
-use crate::binance::ExchangeApi;
+use crate::exchanges::exchange::ExchangeApi;
 use crate::models::{ArbitrageOpportunity, Price, QuoteCurrency};
 use crate::config::Config;
 use anyhow::{Result, anyhow};
-// 移除了未使用的 async_trait 导入
 use rust_decimal::{Decimal,dec};
 use std::sync::Arc;
 use log::{debug, info, warn};

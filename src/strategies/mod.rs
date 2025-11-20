@@ -3,14 +3,14 @@ mod twap;
 mod depth;
 mod slippage;
 mod trend;
-mod funding_rate;
+// mod funding_rate; // 暂时注释掉，因为文件不存在
 
 pub use simple::SimpleArbitrageStrategy;
 pub use twap::TimeWeightedAverageStrategy;
 pub use depth::OrderBookDepthStrategy;
 pub use slippage::SlippageControlStrategy;
 pub use trend::TrendFollowingStrategy;
-pub use funding_rate::FundingRateArbitrageStrategy;
+// pub use funding_rate::FundingRateArbitrageStrategy; // 暂时注释掉
 
 use crate::models::{ArbitrageOpportunity, Price};
 use anyhow::Result;

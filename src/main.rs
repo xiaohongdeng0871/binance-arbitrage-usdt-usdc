@@ -1,14 +1,14 @@
 mod arbitrage;
-mod binance;
 mod config;
 mod models;
 mod strategies;
 mod risk;
 mod db;
 mod analytics;
+mod exchanges;
 
 use arbitrage::ArbitrageEngine;
-use binance::{BinanceApi, MockBinanceApi};
+use exchanges::MockBinanceApi;
 use clap::{Parser, Subcommand};
 use config::{Config, StrategyType, RiskControllerType};
 use dotenv::dotenv;
@@ -55,6 +55,10 @@ struct Args {
     /// 启用的风控机制 (多个风控用逗号分隔, 例如 loss-limit,abnormal-price)
     #[clap(long)]
     risk_controllers: Option<String>,
+    
+    /// 交易所名称 (例如 binance, okx, gate.io, bitget)
+    #[clap(short, long, default_value = "binance")]
+    exchange: String,
 
     #[clap(subcommand)]
     command: Command,
@@ -350,6 +354,7 @@ async fn main() -> Result<()> {
     // 显示程序信息
     info!("币安 USDT-USDC 套利程序启动");
     info!("基础资产: {}", args.base_asset);
+    info!("交易所: {}", args.exchange);
     info!("最小利润百分比: {}%", config.arbitrage_settings.min_profit_percentage);
     info!("最大交易金额: {} USDT", config.arbitrage_settings.max_trade_amount_usdt);
     info!("价格检查间隔: {} ms", config.arbitrage_settings.check_interval_ms);
@@ -378,18 +383,80 @@ async fn main() -> Result<()> {
         Command::Live { .. } => {
             // 实时模式，使用实际API
             info!("运行模式: 实时");
-            let api = BinanceApi::new(config.clone());
             
-            let mut engine = ArbitrageEngine::new(api, config, &args.base_asset)?;
+            // 创建指定交易所的API实例
+            let exchange_api = exchanges::ExchangeFactory::create_exchange_api_by_name(
+                &args.exchange, 
+                config.clone()
+            )?;
             
-            // 如果有数据库连接，设置到引擎中
-            if let Some(db) = db_manager {
-                engine.set_db_manager(db);
+            // 使用 match 语句处理不同的交易所类型
+            // 注意：这里我们需要将 Box<dyn ExchangeApi> 转换为具体的类型
+            match args.exchange.as_str() {
+                "binance" => {
+                    let exchange: Box<exchanges::BinanceApi> = unsafe {
+                        Box::from_raw(Box::into_raw(exchange_api) as *mut exchanges::BinanceApi)
+                    };
+                    let mut engine = ArbitrageEngine::new(*exchange, config, &args.base_asset)?;
+                    
+                    // 如果有数据库连接，设置到引擎中
+                    if let Some(db) = db_manager {
+                        engine.set_db_manager(db);
+                    }
+                    
+                    // 开始监控套利机会
+                    info!("开始监控 {}-USDT/USDC 套利机会", args.base_asset);
+                    engine.monitor_opportunities().await?;
+                }
+                "okx" => {
+                    let exchange: Box<exchanges::OkxApi> = unsafe {
+                        Box::from_raw(Box::into_raw(exchange_api) as *mut exchanges::OkxApi)
+                    };
+                    let mut engine = ArbitrageEngine::new(*exchange, config, &args.base_asset)?;
+                    
+                    // 如果有数据库连接，设置到引擎中
+                    if let Some(db) = db_manager {
+                        engine.set_db_manager(db);
+                    }
+                    
+                    // 开始监控套利机会
+                    info!("开始监控 {}-USDT/USDC 套利机会", args.base_asset);
+                    engine.monitor_opportunities().await?;
+                }
+                "gate.io" => {
+                    let exchange: Box<exchanges::GateIoApi> = unsafe {
+                        Box::from_raw(Box::into_raw(exchange_api) as *mut exchanges::GateIoApi)
+                    };
+                    let mut engine = ArbitrageEngine::new(*exchange, config, &args.base_asset)?;
+                    
+                    // 如果有数据库连接，设置到引擎中
+                    if let Some(db) = db_manager {
+                        engine.set_db_manager(db);
+                    }
+                    
+                    // 开始监控套利机会
+                    info!("开始监控 {}-USDT/USDC 套利机会", args.base_asset);
+                    engine.monitor_opportunities().await?;
+                }
+                "bitget" => {
+                    let exchange: Box<exchanges::BitgetApi> = unsafe {
+                        Box::from_raw(Box::into_raw(exchange_api) as *mut exchanges::BitgetApi)
+                    };
+                    let mut engine = ArbitrageEngine::new(*exchange, config, &args.base_asset)?;
+                    
+                    // 如果有数据库连接，设置到引擎中
+                    if let Some(db) = db_manager {
+                        engine.set_db_manager(db);
+                    }
+                    
+                    // 开始监控套利机会
+                    info!("开始监控 {}-USDT/USDC 套利机会", args.base_asset);
+                    engine.monitor_opportunities().await?;
+                }
+                _ => {
+                    return Err(anyhow::anyhow!("不支持的交易所类型: {}", args.exchange));
+                }
             }
-            
-            // 开始监控套利机会
-            info!("开始监控 {}-USDT/USDC 套利机会", args.base_asset);
-            engine.monitor_opportunities().await?;
         },
         Command::Simulate { volatility, opportunity_probability, runtime, .. } => {
             // 模拟模式，使用模拟API

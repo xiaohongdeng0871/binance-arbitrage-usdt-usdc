@@ -1,7 +1,7 @@
-use crate::binance::ExchangeApi;
+use crate::exchanges::ExchangeApi;
 use crate::config::{Config, StrategyType, RiskControllerType};
 use crate::models::{ArbitrageOpportunity, ArbitrageResult, ArbitrageStatus, OrderStatus, QuoteCurrency, Side, FundingRate};
-use crate::strategies::{TradingStrategy, SimpleArbitrageStrategy, TimeWeightedAverageStrategy, OrderBookDepthStrategy, SlippageControlStrategy, TrendFollowingStrategy, FundingRateArbitrageStrategy};
+use crate::strategies::{TradingStrategy, SimpleArbitrageStrategy, TimeWeightedAverageStrategy, OrderBookDepthStrategy, SlippageControlStrategy, TrendFollowingStrategy};
 use crate::risk::{RiskManager, DailyLossLimitController, AbnormalPriceController, ExposureController, TradingTimeWindowController, TradingFrequencyController, PairBlacklistController};
 use crate::db::DatabaseManager;
 use anyhow::{anyhow, Result};
@@ -76,12 +76,16 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
                     )));
                 },
                 StrategyType::FundingRateArbitrage => {
+                    // 暂时注释掉资金费率套利策略，因为相关文件不存在
+                    /*
                     info!("启用资金费率套利策略");
                     let settings = &config.strategy_settings.funding_rate;
                     strategies.push(Box::new(FundingRateArbitrageStrategy::new(
                         config.clone(),
                         Decimal::from_f64(settings.min_funding_rate_diff).unwrap_or(dec!(0.01)),
                     )));
+                    */
+                    info!("资金费率套利策略暂不可用");
                 },
             }
         }

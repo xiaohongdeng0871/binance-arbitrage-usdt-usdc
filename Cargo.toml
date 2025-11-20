@@ -27,3 +27,4 @@ sha2 = "0.10"
 
 # 数据库依赖
 sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "mysql", "chrono","rust_decimal","uuid","json"] }
+base64 = "0.22.1"

@@ -1,6 +1,6 @@
 use super::RiskController;
 use crate::models::{ArbitrageOpportunity, ArbitrageResult, ArbitrageStatus};
-use crate::binance::ExchangeApi;
+use crate::exchanges::exchange::ExchangeApi;
 use anyhow::Result;
 use async_trait::async_trait;
 use log::{debug, info, warn};
@@ -133,7 +133,7 @@ mod tests {
     use rust_decimal::dec;
     use crate::models::QuoteCurrency;
     use super::*;
-    use crate::binance::MockBinanceApi;
+    use crate::exchanges::binance::MockBinanceApi;
     
     #[tokio::test]
     async fn test_exposure_control() {
