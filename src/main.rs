@@ -14,11 +14,10 @@ use dotenv::dotenv;
 use db::DatabaseManager;
 use analytics::{AnalyticsManager, TimeRange};
 use std::path::PathBuf;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use log::{debug, error, info, LevelFilter, warn};
 use rust_decimal::Decimal;
 use rust_decimal::prelude::FromPrimitive;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use sqlx::mysql::MySqlPoolOptions;
@@ -143,7 +142,7 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     
     // 设置日志
-    let log_level = match args.log_level.to_lowercase().as_str() {
+    let _log_level = match args.log_level.to_lowercase().as_str() {
         "debug" => LevelFilter::Debug,
         "info" => LevelFilter::Info,
         "warn" => LevelFilter::Warn,
@@ -318,6 +317,7 @@ async fn main() -> Result<()> {
                 "depth" => enabled_strategies.push(StrategyType::OrderBookDepth),
                 "slippage" => enabled_strategies.push(StrategyType::SlippageControl),
                 "trend" => enabled_strategies.push(StrategyType::TrendFollowing),
+                "funding-rate" => enabled_strategies.push(StrategyType::FundingRateArbitrage),
                 _ => warn!("未知的策略类型: {}", strategy),
             }
         }
@@ -325,6 +325,11 @@ async fn main() -> Result<()> {
         if !enabled_strategies.is_empty() {
             config.strategy_settings.enabled_strategies = enabled_strategies;
         }
+    }
+    
+    // 检查是否配置了策略
+    if config.strategy_settings.enabled_strategies.is_empty() {
+        return Err(anyhow::anyhow!("未配置任何交易策略，请在配置文件或命令行参数中至少指定一种策略"));
     }
     
     // 根据命令行参数设置风控机制

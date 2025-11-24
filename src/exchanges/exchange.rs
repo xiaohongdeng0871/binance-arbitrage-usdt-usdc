@@ -19,6 +19,7 @@ pub enum Exchange {
 
 impl Exchange {
     /// 将交易所枚举转换为字符串形式
+    #[allow(dead_code)]
     pub fn as_str(&self) -> &'static str {
         match self {
             Exchange::Binance => "binance",
@@ -46,6 +47,7 @@ impl Exchange {
 #[async_trait]
 pub trait ExchangeApi: Send + Sync {
     /// 获取交易所类型
+    #[allow(dead_code)]
     fn get_exchange(&self) -> Exchange;
     
     /// 获取交易对信息
@@ -88,6 +90,7 @@ pub trait ExchangeApi: Send + Sync {
     /// 
     /// # 返回值
     /// 返回包含买卖盘信息的 [OrderBook](crate::models::OrderBook) 结构体
+    #[allow(dead_code)]
     async fn get_order_book(&self, symbol: &str, limit: Option<u32>) -> Result<OrderBook>;
     
     /// 获取指定交易对的资金费率

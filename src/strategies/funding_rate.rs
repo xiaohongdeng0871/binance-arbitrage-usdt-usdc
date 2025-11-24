@@ -1,51 +1,49 @@
-use crate::config::Config;
 use crate::models::{ArbitrageOpportunity, Price};
+use crate::config::Config;
 use anyhow::Result;
 use async_trait::async_trait;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::FromPrimitive;
 
-/// 滑点控制策略
-/// 通过控制成交价格滑点，避免在波动大的市场中亏损
+/// 资金费率套利策略
 #[derive(Debug, Clone)]
-pub struct SlippageControlStrategy {
+pub struct FundingRateArbitrageStrategy {
     config: Config,
     #[allow(dead_code)]
-    max_slippage_pct: Decimal,
-    #[allow(dead_code)]
-    volatility_window_size: usize,
+    min_funding_rate_diff: Decimal,
 }
 
-impl SlippageControlStrategy {
-    pub fn new(config: Config, max_slippage_pct: Decimal, volatility_window_size: usize) -> Self {
+impl FundingRateArbitrageStrategy {
+    pub fn new(config: Config, min_funding_rate_diff: Decimal) -> Self {
         Self {
             config,
-            max_slippage_pct,
-            volatility_window_size,
+            min_funding_rate_diff,
         }
     }
 }
 
 #[async_trait]
-impl super::TradingStrategy for SlippageControlStrategy {
+impl crate::strategies::TradingStrategy for FundingRateArbitrageStrategy {
     fn name(&self) -> &str {
-        "SlippageControl"
+        "FundingRateArbitrage"
     }
 
     async fn find_opportunity(
         &self,
         base_asset: &str,
-        usdt_price: &Price,
-        usdc_price: &Price,
+        spot_price: &Price,
+        futures_price: &Price,
     ) -> Result<Option<ArbitrageOpportunity>> {
+        // 对于资金费率套利，机会发现逻辑在执行阶段处理
+        // 这里我们创建一个基本的机会对象
         let max_trade_amount = Decimal::from_f64(self.config.arbitrage_settings.max_trade_amount_usdt).unwrap_or(Decimal::ZERO);
         
         let opportunity = ArbitrageOpportunity::new(
             base_asset,
             crate::models::QuoteCurrency::USDT,
-            crate::models::QuoteCurrency::USDC,
-            usdt_price.price,
-            usdc_price.price,
+            crate::models::QuoteCurrency::USDT,
+            spot_price.price,
+            futures_price.price,
             max_trade_amount,
         );
         
@@ -53,6 +51,7 @@ impl super::TradingStrategy for SlippageControlStrategy {
     }
 
     async fn validate_opportunity(&self, opportunity: &ArbitrageOpportunity) -> Result<bool> {
+        // 基本验证
         let min_profit = Decimal::from_f64(self.config.arbitrage_settings.min_profit_percentage).unwrap_or(Decimal::ZERO);
         Ok(opportunity.profit_percentage >= min_profit)
     }

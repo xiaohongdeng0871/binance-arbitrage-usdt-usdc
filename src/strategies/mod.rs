@@ -3,14 +3,14 @@ mod twap;
 mod depth;
 mod slippage;
 mod trend;
-// mod funding_rate; // 暂时注释掉，因为文件不存在
+mod funding_rate;
 
 pub use simple::SimpleArbitrageStrategy;
 pub use twap::TimeWeightedAverageStrategy;
 pub use depth::OrderBookDepthStrategy;
 pub use slippage::SlippageControlStrategy;
 pub use trend::TrendFollowingStrategy;
-// pub use funding_rate::FundingRateArbitrageStrategy; // 暂时注释掉
+pub use funding_rate::FundingRateArbitrageStrategy;
 
 use crate::models::{ArbitrageOpportunity, Price};
 use anyhow::Result;
@@ -22,6 +22,7 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait TradingStrategy: Send + Sync {
     /// 获取策略名称
+    #[allow(dead_code)]
     fn name(&self) -> &str;
     
     /// 寻找套利机会

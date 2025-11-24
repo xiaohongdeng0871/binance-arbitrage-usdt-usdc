@@ -10,9 +10,6 @@ use rust_decimal::Decimal;
 use sha2::Sha256;
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::sync::{Arc, Mutex};
-use log::{info};
-use rust_decimal::dec;
 
 type HmacSha256 = Hmac<Sha256>;
 

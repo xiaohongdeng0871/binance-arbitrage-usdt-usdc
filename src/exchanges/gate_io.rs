@@ -10,7 +10,6 @@ use rust_decimal::Decimal;
 use sha2::Sha512;
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
-use base64::engine::general_purpose;
 
 type HmacSha512 = Hmac<Sha512>;
 

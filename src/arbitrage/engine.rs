@@ -1,7 +1,7 @@
 use crate::exchanges::ExchangeApi;
 use crate::config::{Config, StrategyType, RiskControllerType};
 use crate::models::{ArbitrageOpportunity, ArbitrageResult, ArbitrageStatus, OrderStatus, QuoteCurrency, Side, FundingRate};
-use crate::strategies::{TradingStrategy, SimpleArbitrageStrategy, TimeWeightedAverageStrategy, OrderBookDepthStrategy, SlippageControlStrategy, TrendFollowingStrategy};
+use crate::strategies::{TradingStrategy, SimpleArbitrageStrategy, TimeWeightedAverageStrategy, OrderBookDepthStrategy, SlippageControlStrategy, TrendFollowingStrategy, FundingRateArbitrageStrategy};
 use crate::risk::{RiskManager, DailyLossLimitController, AbnormalPriceController, ExposureController, TradingTimeWindowController, TradingFrequencyController, PairBlacklistController};
 use crate::db::DatabaseManager;
 use anyhow::{anyhow, Result};
@@ -12,12 +12,72 @@ use tokio::time::{sleep, Duration};
 use chrono::Utc;
 use rust_decimal::prelude::FromPrimitive;
 
-/// 套利引擎，使用多种交易策略和风控机制进行USDT和USDC之间的套利
+/// 套利策略枚举，包含所有支持的套利策略类型
+#[derive(Debug, Clone)]
+pub enum ArbitrageStrategy<T: ExchangeApi + Send + Sync + 'static> {
+    /// 简单价格差异套利策略
+    Simple(Box<SimpleArbitrageStrategy>),
+    /// 时间加权平均价格(TWAP)套利策略
+    TimeWeighted(Box<TimeWeightedAverageStrategy>),
+    /// 订单簿深度分析套利策略
+    OrderBookDepth(Box<OrderBookDepthStrategy<T>>),
+    /// 滑点控制套利策略
+    SlippageControl(Box<SlippageControlStrategy>),
+    /// 趋势跟踪套利策略
+    TrendFollowing(Box<TrendFollowingStrategy>),
+    /// 资金费率套利策略
+    FundingRate(Box<FundingRateArbitrageStrategy>),
+}
+
+impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageStrategy<T> {
+    /// 获取策略名称
+    pub fn name(&self) -> &str {
+        match self {
+            ArbitrageStrategy::Simple(_) => "Simple",
+            ArbitrageStrategy::TimeWeighted(_) => "TimeWeighted",
+            ArbitrageStrategy::OrderBookDepth(_) => "OrderBookDepth",
+            ArbitrageStrategy::SlippageControl(_) => "SlippageControl",
+            ArbitrageStrategy::TrendFollowing(_) => "TrendFollowing",
+            ArbitrageStrategy::FundingRate(_) => "FundingRate",
+        }
+    }
+
+    /// 寻找套利机会
+    pub async fn find_opportunity(
+        &self,
+        base_asset: &str,
+        spot_price: &crate::models::Price,
+        futures_price: &crate::models::Price,
+    ) -> Result<Option<ArbitrageOpportunity>> {
+        match self {
+            ArbitrageStrategy::Simple(strategy) => strategy.find_opportunity(base_asset, spot_price, futures_price).await,
+            ArbitrageStrategy::TimeWeighted(strategy) => strategy.find_opportunity(base_asset, spot_price, futures_price).await,
+            ArbitrageStrategy::OrderBookDepth(strategy) => strategy.find_opportunity(base_asset, spot_price, futures_price).await,
+            ArbitrageStrategy::SlippageControl(strategy) => strategy.find_opportunity(base_asset, spot_price, futures_price).await,
+            ArbitrageStrategy::TrendFollowing(strategy) => strategy.find_opportunity(base_asset, spot_price, futures_price).await,
+            ArbitrageStrategy::FundingRate(strategy) => strategy.find_opportunity(base_asset, spot_price, futures_price).await,
+        }
+    }
+
+    /// 验证套利机会是否满足策略要求
+    pub async fn validate_opportunity(&self, opportunity: &ArbitrageOpportunity) -> Result<bool> {
+        match self {
+            ArbitrageStrategy::Simple(strategy) => strategy.validate_opportunity(opportunity).await,
+            ArbitrageStrategy::TimeWeighted(strategy) => strategy.validate_opportunity(opportunity).await,
+            ArbitrageStrategy::OrderBookDepth(strategy) => strategy.validate_opportunity(opportunity).await,
+            ArbitrageStrategy::SlippageControl(strategy) => strategy.validate_opportunity(opportunity).await,
+            ArbitrageStrategy::TrendFollowing(strategy) => strategy.validate_opportunity(opportunity).await,
+            ArbitrageStrategy::FundingRate(strategy) => strategy.validate_opportunity(opportunity).await,
+        }
+    }
+}
+
+/// 套利引擎，使用多种交易策略和风控机制进行套利
 pub struct ArbitrageEngine<T: ExchangeApi + Send + Sync + 'static> {
     api: Arc<T>,
     config: Config,
     base_asset: String,
-    strategies: Vec<Box<dyn TradingStrategy>>,
+    strategies: Vec<ArbitrageStrategy<T>>,
     risk_manager: RiskManager,
     // 添加数据库管理器
     db_manager: Option<Arc<DatabaseManager>>,
@@ -28,72 +88,67 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
         let api_arc = Arc::new(api);
         
         // 初始化交易策略
-        let mut strategies: Vec<Box<dyn TradingStrategy>> = Vec::new();
+        let mut strategies: Vec<ArbitrageStrategy<T>> = Vec::new();
         
         // 根据配置启用的策略类型初始化相应的策略
         for strategy_type in &config.strategy_settings.enabled_strategies {
             match strategy_type {
                 StrategyType::Simple => {
                     info!("启用简单价格差异套利策略");
-                    strategies.push(Box::new(SimpleArbitrageStrategy::new(config.clone())));
+                    strategies.push(ArbitrageStrategy::Simple(Box::new(SimpleArbitrageStrategy::new(config.clone()))));
                 },
                 StrategyType::TimeWeighted => {
                     info!("启用时间加权平均价格(TWAP)套利策略");
                     let settings = &config.strategy_settings.twap;
-                    strategies.push(Box::new(TimeWeightedAverageStrategy::new(
+                    strategies.push(ArbitrageStrategy::TimeWeighted(Box::new(TimeWeightedAverageStrategy::new(
                         config.clone(),
                         settings.slices,
                         settings.interval_seconds,
-                    )));
+                    ))));
                 },
                 StrategyType::OrderBookDepth => {
                     info!("启用订单簿深度分析套利策略");
                     let settings = &config.strategy_settings.order_book_depth;
-                    strategies.push(Box::new(OrderBookDepthStrategy::new(
+                    strategies.push(ArbitrageStrategy::OrderBookDepth(Box::new(OrderBookDepthStrategy::new(
                         config.clone(),
                         api_arc.clone(),
                         settings.depth_levels,
                         Decimal::from_f64(settings.min_liquidity).unwrap_or(dec!(1.0)),
-                    )));
+                    ))));
                 },
                 StrategyType::SlippageControl => {
                     info!("启用滑点控制套利策略");
                     let settings = &config.strategy_settings.slippage_control;
-                    strategies.push(Box::new(SlippageControlStrategy::new(
+                    strategies.push(ArbitrageStrategy::SlippageControl(Box::new(SlippageControlStrategy::new(
                         config.clone(),
                         Decimal::from_f64(settings.max_slippage_pct).unwrap_or(dec!(0.5)),
                         settings.volatility_window_size,
-                    )));
+                    ))));
                 },
                 StrategyType::TrendFollowing => {
                     info!("启用趋势跟踪套利策略");
                     let settings = &config.strategy_settings.trend_following;
-                    strategies.push(Box::new(TrendFollowingStrategy::new(
+                    strategies.push(ArbitrageStrategy::TrendFollowing(Box::new(TrendFollowingStrategy::new(
                         config.clone(),
                         settings.short_window,
                         settings.long_window,
                         Decimal::from_f64(settings.trend_threshold).unwrap_or(dec!(1.0)),
-                    )));
+                    ))));
                 },
                 StrategyType::FundingRateArbitrage => {
-                    // 暂时注释掉资金费率套利策略，因为相关文件不存在
-                    /*
                     info!("启用资金费率套利策略");
                     let settings = &config.strategy_settings.funding_rate;
-                    strategies.push(Box::new(FundingRateArbitrageStrategy::new(
+                    strategies.push(ArbitrageStrategy::FundingRate(Box::new(FundingRateArbitrageStrategy::new(
                         config.clone(),
                         Decimal::from_f64(settings.min_funding_rate_diff).unwrap_or(dec!(0.01)),
-                    )));
-                    */
-                    info!("资金费率套利策略暂不可用");
+                    ))));
                 },
             }
         }
         
-        // 如果没有启用任何策略，则默认使用简单策略
+        // 如果没有启用任何策略，则返回错误
         if strategies.is_empty() {
-            info!("未配置任何策略，使用默认的简单价格差异套利策略");
-            strategies.push(Box::new(SimpleArbitrageStrategy::new(config.clone())));
+            return Err(anyhow!("未配置任何交易策略，请在配置文件或命令行参数中至少指定一种策略"));
         }
         
         // 初始化风控管理器
@@ -389,12 +444,17 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
     
     /// 执行套利交易
     async fn execute_arbitrage(&self, opportunity: &ArbitrageOpportunity) -> Result<ArbitrageResult> {
-        // 对于资金费率套利，需要考虑现货和合约价格差
-        // 如果是资金费率套利策略，执行特殊的套利逻辑
-        if self.strategies.iter().any(|s| s.name() == "FundingRateArbitrage") {
+        // 根据策略类型执行不同的套利逻辑
+        if self.strategies.iter().any(|s| s.name() == "FundingRate") {
             return self.execute_funding_rate_arbitrage(opportunity).await;
         }
         
+        // 默认执行标准套利逻辑
+        self.execute_standard_arbitrage(opportunity).await
+    }
+    
+    /// 执行标准套利交易
+    async fn execute_standard_arbitrage(&self, opportunity: &ArbitrageOpportunity) -> Result<ArbitrageResult> {
         // 计算交易量
         let trade_amount_quote = opportunity.max_trade_amount;
         let trade_amount_base = trade_amount_quote / opportunity.buy_price;

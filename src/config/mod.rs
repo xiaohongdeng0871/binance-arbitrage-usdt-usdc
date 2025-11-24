@@ -299,6 +299,7 @@ impl Config {
         })
     }
     
+    #[allow(dead_code)]
     pub fn new_with_exchange(exchange: Exchange) -> Result<Self> {
         dotenv().ok();
         
