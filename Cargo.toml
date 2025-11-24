@@ -1,9 +1,9 @@
 [package]
-name = "binance-arbitrage"
+name = "digital-arbitrage"
 version = "0.1.0"
 edition = "2021"
-description = "USDT和USDC套利程序，用于币安交易所"
-authors = ["Kwaipilot"]
+description = "数字货币套利策略"
+authors = ["Qwen"]
 
 [dependencies]
 tokio = { version = "1.28", features = ["full"] }
