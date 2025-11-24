@@ -8,7 +8,7 @@
 //! - `Config`: 配置结构体，用于存储API密钥和套利参数
 //! - `ArbitrageEngine`: 套利引擎，实现套利逻辑
 //! - `BinanceApi`: 币安API客户端，用于与币安交易所通信
-//! - `MockBinanceApi`: 模拟API客户端，用于测试和开发
+//! - `MockExchangeApi`: 模拟API客户端，用于测试和开发
 //! - `DatabaseManager`: 数据库管理器，用于存储和检索套利历史记录
 //! - `AnalyticsManager`: 分析管理器，用于生成套利绩效报告和统计数据
 
@@ -32,9 +32,8 @@ pub use db::{DatabaseManager, TradeStats, DailyStats, AssetStats};
 pub use analytics::{AnalyticsManager, PerformanceReport, TimeRange};
 pub use exchanges::{
     ExchangeFactory,
-    exchange::{Exchange, ExchangeApi as GenericExchangeApi},
+    exchange::{Exchange, ExchangeApi as GenericExchangeApi, MockExchangeApi},
     BinanceApi as ExchangeBinanceApi,
-    MockBinanceApi,
     OkxApi,
     GateIoApi,
     BitgetApi,

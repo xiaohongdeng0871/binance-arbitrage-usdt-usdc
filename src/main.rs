@@ -8,25 +8,26 @@ mod analytics;
 mod exchanges;
 
 use arbitrage::ArbitrageEngine;
-use exchanges::MockBinanceApi;
 use clap::{Parser, Subcommand};
 use config::{Config, StrategyType, RiskControllerType};
 use dotenv::dotenv;
 use db::DatabaseManager;
 use analytics::{AnalyticsManager, TimeRange};
 use std::path::PathBuf;
-use anyhow::Result;
-use tracing::{info, error, warn, debug, Level};
-use tracing_subscriber::FmtSubscriber;
+use anyhow::{Context, Result};
+use log::{debug, error, info, LevelFilter, warn};
+use rust_decimal::Decimal;
+use rust_decimal::prelude::FromPrimitive;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
-
-use rust_decimal::{Decimal,dec};
-use std::str::FromStr;
-use std::fs;
-use chrono::{Utc, Local, NaiveDate, TimeZone};
-use rust_decimal::prelude::FromPrimitive;
 use sqlx::mysql::MySqlPoolOptions;
+use exchanges::MockExchangeApi;
+use crate::exchanges::exchange::Exchange;
+use chrono::{Local, NaiveDate, Utc, TimeZone};
+use std::fs;
+use std::str::FromStr;
+use tracing_subscriber::EnvFilter;
 
 /// 币安 USDT-USDC 套利程序
 #[derive(Parser, Debug)]
@@ -128,7 +129,7 @@ enum Command {
         
         /// 导出报告路径
         #[clap(long, default_value = "./reports")]
-        export_path: PathBuf,
+        export_path: std::path::PathBuf,
         
         /// 显示币种统计的数量限制
         #[clap(long, default_value = "10")]
@@ -143,19 +144,16 @@ async fn main() -> Result<()> {
     
     // 设置日志
     let log_level = match args.log_level.to_lowercase().as_str() {
-        "debug" => Level::DEBUG,
-        "info" => Level::INFO,
-        "warn" => Level::WARN,
-        "error" => Level::ERROR,
-        _ => Level::INFO,
+        "debug" => LevelFilter::Debug,
+        "info" => LevelFilter::Info,
+        "warn" => LevelFilter::Warn,
+        "error" => LevelFilter::Error,
+        _ => LevelFilter::Info,
     };
     
-    let subscriber = FmtSubscriber::builder()
-        .with_max_level(log_level)
-        .finish();
-    
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("无法设置全局日志订阅者");
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
     
     // 加载环境变量
     dotenv().ok();
@@ -465,7 +463,7 @@ async fn main() -> Result<()> {
             info!("价格波动率: {}%", volatility);
             info!("套利机会概率: {}%", opportunity_probability);
             
-            let api = MockBinanceApi::new();
+            let api = MockExchangeApi::new(Exchange::Binance);
             let mut engine = ArbitrageEngine::new(api.clone(), config, &args.base_asset)?;
             
             // 如果有数据库连接，设置到引擎中
@@ -500,7 +498,7 @@ async fn main() -> Result<()> {
 }
 
 /// 模拟价格波动
-async fn simulate_price_movements(api: &MockBinanceApi, base_asset: &str, volatility: f64, opportunity_probability: u32) {
+async fn simulate_price_movements(api: &MockExchangeApi, base_asset: &str, volatility: f64, opportunity_probability: u32) {
     // 构造交易对名称
     let usdt_symbol = format!("{}{}", base_asset, "USDT");
     let usdc_symbol = format!("{}{}", base_asset, "USDC");
@@ -532,8 +530,8 @@ async fn simulate_price_movements(api: &MockBinanceApi, base_asset: &str, volati
         usdc_price = usdc_price.max(1.0);
         
         // 更新API中的价格
-        api.update_price(&usdt_symbol, Decimal::from_f64(usdt_price).unwrap_or(dec!(50000)));
-        api.update_price(&usdc_symbol, Decimal::from_f64(usdc_price).unwrap_or(dec!(50025)));
+        api.update_price(&usdt_symbol, Decimal::from_f64(usdt_price).unwrap_or(Decimal::from(50000)));
+        api.update_price(&usdc_symbol, Decimal::from_f64(usdc_price).unwrap_or(Decimal::from(50025)));
         
         debug!("更新模拟价格 - {}: {:.2}, {}: {:.2}", 
             usdt_symbol, usdt_price, 
