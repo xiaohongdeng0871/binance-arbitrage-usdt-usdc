@@ -201,6 +201,12 @@ async fn main() -> Result<()> {
             None
         }
     };
+    // 显示数据库连接状态
+    if db_manager.is_some() {
+        info!("数据库连接: 已连接");
+    } else {
+        return Err(anyhow::anyhow!("请检查数据库连接,否则套利历史将不会被记录"))
+    }
     
     match &args.command {
         Command::Analytics { time_range, start_date, end_date, export_format, export_path, top_assets: _ } => {
@@ -355,7 +361,7 @@ async fn main() -> Result<()> {
     }
     
     // 显示程序信息
-    info!("币安 USDT-USDC 套利程序启动");
+    info!("套利程序启动");
     info!("基础资产: {}", args.base_asset);
     info!("交易所: {}", args.exchange);
     info!("最小利润百分比: {}%", config.arbitrage_settings.min_profit_percentage);
@@ -374,13 +380,6 @@ async fn main() -> Result<()> {
         info!("  - {:?}", controller);
     }
     
-    // 显示数据库连接状态
-    if db_manager.is_some() {
-        info!("数据库连接: 已连接");
-    } else {
-        info!("数据库连接: 未连接 (套利历史将不会被记录)");
-    }
-    
     // 根据命令执行相应操作
     match args.command {
         Command::Live { .. } => {
@@ -397,10 +396,7 @@ async fn main() -> Result<()> {
             // 注意：这里我们需要将 Box<dyn ExchangeApi> 转换为具体的类型
             match args.exchange.as_str() {
                 "binance" => {
-                    let exchange: Box<exchanges::BinanceApi> = unsafe {
-                        Box::from_raw(Box::into_raw(exchange_api) as *mut exchanges::BinanceApi)
-                    };
-                    let mut engine = ArbitrageEngine::new(*exchange, config, &args.base_asset)?;
+                    let mut engine = ArbitrageEngine::new(exchange_api, config, &args.base_asset)?;
                     
                     // 如果有数据库连接，设置到引擎中
                     if let Some(db) = db_manager {
@@ -412,10 +408,7 @@ async fn main() -> Result<()> {
                     engine.monitor_opportunities().await?;
                 }
                 "okx" => {
-                    let exchange: Box<exchanges::OkxApi> = unsafe {
-                        Box::from_raw(Box::into_raw(exchange_api) as *mut exchanges::OkxApi)
-                    };
-                    let mut engine = ArbitrageEngine::new(*exchange, config, &args.base_asset)?;
+                    let mut engine = ArbitrageEngine::new(exchange_api, config, &args.base_asset)?;
                     
                     // 如果有数据库连接，设置到引擎中
                     if let Some(db) = db_manager {
@@ -427,10 +420,7 @@ async fn main() -> Result<()> {
                     engine.monitor_opportunities().await?;
                 }
                 "gate.io" => {
-                    let exchange: Box<exchanges::GateIoApi> = unsafe {
-                        Box::from_raw(Box::into_raw(exchange_api) as *mut exchanges::GateIoApi)
-                    };
-                    let mut engine = ArbitrageEngine::new(*exchange, config, &args.base_asset)?;
+                    let mut engine = ArbitrageEngine::new(exchange_api, config, &args.base_asset)?;
                     
                     // 如果有数据库连接，设置到引擎中
                     if let Some(db) = db_manager {
@@ -442,10 +432,7 @@ async fn main() -> Result<()> {
                     engine.monitor_opportunities().await?;
                 }
                 "bitget" => {
-                    let exchange: Box<exchanges::BitgetApi> = unsafe {
-                        Box::from_raw(Box::into_raw(exchange_api) as *mut exchanges::BitgetApi)
-                    };
-                    let mut engine = ArbitrageEngine::new(*exchange, config, &args.base_asset)?;
+                    let mut engine = ArbitrageEngine::new(exchange_api, config, &args.base_asset)?;
                     
                     // 如果有数据库连接，设置到引擎中
                     if let Some(db) = db_manager {
@@ -469,7 +456,7 @@ async fn main() -> Result<()> {
             info!("套利机会概率: {}%", opportunity_probability);
             
             let api = MockExchangeApi::new(Exchange::Binance);
-            let mut engine = ArbitrageEngine::new(api.clone(), config, &args.base_asset)?;
+            let mut engine = ArbitrageEngine::new(Box::new(api.clone()), config, &args.base_asset)?;
             
             // 如果有数据库连接，设置到引擎中
             if let Some(db) = db_manager {

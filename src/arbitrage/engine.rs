@@ -14,13 +14,13 @@ use rust_decimal::prelude::FromPrimitive;
 
 /// 套利策略枚举，包含所有支持的套利策略类型
 #[derive(Debug, Clone)]
-pub enum ArbitrageStrategy<T: ExchangeApi + Send + Sync + 'static> {
+pub enum ArbitrageStrategy {
     /// 简单价格差异套利策略
     Simple(Box<SimpleArbitrageStrategy>),
     /// 时间加权平均价格(TWAP)套利策略
     TimeWeighted(Box<TimeWeightedAverageStrategy>),
     /// 订单簿深度分析套利策略
-    OrderBookDepth(Box<OrderBookDepthStrategy<T>>),
+    OrderBookDepth(Box<OrderBookDepthStrategy>),
     /// 滑点控制套利策略
     SlippageControl(Box<SlippageControlStrategy>),
     /// 趋势跟踪套利策略
@@ -29,7 +29,7 @@ pub enum ArbitrageStrategy<T: ExchangeApi + Send + Sync + 'static> {
     FundingRate(Box<FundingRateArbitrageStrategy>),
 }
 
-impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageStrategy<T> {
+impl ArbitrageStrategy {
     /// 获取策略名称
     pub fn name(&self) -> &str {
         match self {
@@ -72,23 +72,21 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageStrategy<T> {
     }
 }
 
-/// 套利引擎，使用多种交易策略和风控机制进行套利
-pub struct ArbitrageEngine<T: ExchangeApi + Send + Sync + 'static> {
-    api: Arc<T>,
+pub struct ArbitrageEngine {
+    api: Arc<Box<dyn ExchangeApi>>,
     config: Config,
     base_asset: String,
-    strategies: Vec<ArbitrageStrategy<T>>,
+    strategies: Vec<ArbitrageStrategy>,
     risk_manager: RiskManager,
     // 添加数据库管理器
     db_manager: Option<Arc<DatabaseManager>>,
 }
 
-impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
-    pub fn new(api: T, config: Config, base_asset: &str) -> Result<Self> {
+impl ArbitrageEngine {
+    pub fn new(api: Box<dyn ExchangeApi>, config: Config, base_asset: &str) -> Result<Self> {
         let api_arc = Arc::new(api);
         
-        // 初始化交易策略
-        let mut strategies: Vec<ArbitrageStrategy<T>> = Vec::new();
+        let mut strategies: Vec<ArbitrageStrategy> = Vec::new();
         
         // 根据配置启用的策略类型初始化相应的策略
         for strategy_type in &config.strategy_settings.enabled_strategies {
@@ -111,7 +109,6 @@ impl<T: ExchangeApi + Send + Sync + 'static> ArbitrageEngine<T> {
                     let settings = &config.strategy_settings.order_book_depth;
                     strategies.push(ArbitrageStrategy::OrderBookDepth(Box::new(OrderBookDepthStrategy::new(
                         config.clone(),
-                        api_arc.clone(),
                         settings.depth_levels,
                         Decimal::from_f64(settings.min_liquidity).unwrap_or(dec!(1.0)),
                     ))));

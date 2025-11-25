@@ -10,21 +10,18 @@ use rust_decimal::prelude::FromPrimitive;
 /// 订单簿深度分析策略
 /// 考虑订单簿深度和流动性进行交易决策
 #[derive(Debug, Clone)]
-pub struct OrderBookDepthStrategy<T: ExchangeApi + Send + Sync + 'static> {
+pub struct OrderBookDepthStrategy {
     config: Config,
-    #[allow(dead_code)]
-    api: Arc<T>,
     #[allow(dead_code)]
     depth_levels: usize,
     #[allow(dead_code)]
     min_liquidity: Decimal,
 }
 
-impl<T: ExchangeApi + Send + Sync + 'static> OrderBookDepthStrategy<T> {
-    pub fn new(config: Config, api: Arc<T>, depth_levels: usize, min_liquidity: Decimal) -> Self {
+impl OrderBookDepthStrategy {
+    pub fn new(config: Config, depth_levels: usize, min_liquidity: Decimal) -> Self {
         Self {
             config,
-            api,
             depth_levels,
             min_liquidity,
         }
@@ -32,7 +29,7 @@ impl<T: ExchangeApi + Send + Sync + 'static> OrderBookDepthStrategy<T> {
 }
 
 #[async_trait]
-impl<T: ExchangeApi + Send + Sync + 'static> super::TradingStrategy for OrderBookDepthStrategy<T> {
+impl super::TradingStrategy for OrderBookDepthStrategy {
     fn name(&self) -> &str {
         "OrderBookDepth"
     }
